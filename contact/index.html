@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
@@ -9,15 +9,15 @@
   <meta name="theme-color" content="#f7f4ef"/>
   <meta name="api-base" content="https://api.polyplaces.co.uk"/>
   <link rel="canonical" href="https://polyplaces.co.uk/contact/"/>
-  <meta property="og:title" content="Contact — Polyplaces"/>
-  <meta property="og:description" content="Get in touch with Polyplaces for commissions, questions, or anything else. We respond within 1–2 business days."/>
+  <meta property="og:title" content="Contact â€” Polyplaces"/>
+  <meta property="og:description" content="Get in touch with Polyplaces for commissions, questions, or anything else. We respond within 1â€“2 business days."/>
   <meta property="og:type" content="website"/>
   <meta property="og:site_name" content="Polyplaces"/>
   <meta property="og:url" content="https://polyplaces.co.uk/contact/"/>
   <meta property="og:image" content="https://polyplaces.co.uk/assets/imgs/74c45980-8acc-4220-b7b1-4b813a2ba1a1.webp"/>
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Contact — Polyplaces"/>
-  <meta name="twitter:description" content="Get in touch with Polyplaces for commissions, questions, or anything else. We respond within 1–2 business days."/>
+  <meta name="twitter:title" content="Contact â€” Polyplaces"/>
+  <meta name="twitter:description" content="Get in touch with Polyplaces for commissions, questions, or anything else. We respond within 1â€“2 business days."/>
   <meta name="twitter:image" content="https://polyplaces.co.uk/assets/imgs/74c45980-8acc-4220-b7b1-4b813a2ba1a1.webp"/>
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=1"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -109,70 +109,13 @@
     <div class="footer-logo">Polyplaces<sup>&reg;</sup></div>
     <div class="footer-tagline">Bespoke 3D map sculptures, made to order in the UK. Every place. Every person.</div>
   </div>
-  <div class="footer-col"><h4>Shop</h4><ul><li><a href="/store/">Design yours</a></li><li><a href="/store/?scale=small">Small</a></li><li><a href="/store/?scale=medium">A4</a></li><li><a href="/store/?scale=large">Large</a></li></ul></div>
+  <div class="footer-col"><h4>Shop</h4><ul><li><a href="/store/">Design yours</a></li><li><a href="/store/?scale=small">Small</a></li><li><a href="/store/?scale=a4">A4</a></li><li><a href="/store/?scale=large">Large</a></li></ul></div>
   <div class="footer-col"><h4>Company</h4><ul><li><a href="/about/">About</a></li><li><a href="/#how">How it works</a></li><li><a href="/#reviews">Reviews</a></li><li><a href="/contact/">Contact</a></li></ul></div>
   <div class="footer-col"><h4>Help</h4><ul><li><a href="/shipping/">Shipping &amp; returns</a></li><li><a href="/faq/">FAQ</a></li><li><a href="/care/">Care guide</a></li><li><a href="/privacy/">Privacy policy</a></li><li><a href="/terms/">Terms &amp; conditions</a></li></ul></div>
   <div class="footer-bottom"><span class="footer-copy">&copy; 2026 Polyplaces Ltd. All rights reserved.</span></div>
 </footer>
 
-<script>
-(function () {
-  var form   = document.getElementById('contact-form');
-  var status = document.getElementById('form-status');
-  var btn    = document.getElementById('submit-btn');
-
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-
-    var name    = document.getElementById('name').value.trim();
-    var email   = document.getElementById('email').value.trim();
-    var subject = document.getElementById('subject').value;
-    var message = document.getElementById('message').value.trim();
-
-    if (!name || !email || !message) {
-      showStatus('error', 'Please fill in all required fields.');
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = 'Sending\u2026';
-    hideStatus();
-
-    var API_BASE = (
-      (window.__POLYPLACES_ENV__ && window.__POLYPLACES_ENV__.POLYPLACES_API_BASE_URL) ||
-      (document.querySelector('meta[name="api-base"]') && document.querySelector('meta[name="api-base"]').getAttribute('content')) ||
-      'https://api.polyplaces.co.uk'
-    ).replace(/\/$/, '');
-
-    fetch(API_BASE + '/contact', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, email: email, subject: subject, message: message })
-    })
-    .then(function (res) {
-      if (!res.ok) throw new Error('server');
-      showStatus('success', 'Message sent \u2014 we\u2019ll be in touch within 1\u20132 business days.');
-      form.reset();
-    })
-    .catch(function () {
-      showStatus('error', 'Something went wrong. Please try again or email us directly at contact@polyplaces.co.uk.');
-    })
-    .finally(function () {
-      btn.disabled = false;
-      btn.textContent = 'Send message \u2192';
-    });
-  });
-
-  function showStatus(type, msg) {
-    status.className = 'form-status ' + type + ' show';
-    status.textContent = msg;
-  }
-  function hideStatus() {
-    status.className = 'form-status';
-    status.textContent = '';
-  }
-}());
-</script>
+<script defer src="../assets/js/contact.js?v=28c770f4"></script>
 
 <div class="cart-overlay" id="cart-overlay" aria-hidden="true"></div>
 <aside class="cart-drawer" id="cart-drawer" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Shopping cart" tabindex="-1">
@@ -190,10 +133,10 @@
   </div>
 </aside>
 
-<script defer src="https://browser.sentry-cdn.com/8.40.0/bundle.min.js" crossorigin="anonymous"></script>
-<script defer src="../assets/js/env.js?v=4b371459"></script>
-<script defer src="../assets/js/app.js?v=c29b87d1"></script>
-<script defer data-domain="polyplaces.co.uk" src="https://plausible.io/js/script.js"></script>
+<script defer src="/assets/js/sentry.bundle.min.js"></script>
+<script defer src="../assets/js/env.js?v=11a50230"></script>
+<script defer src="../assets/js/app.js?v=f3b1735c"></script>
+<script defer src="/assets/js/analytics.js?v=e0200c5e"></script>
 
 </body>
 </html>

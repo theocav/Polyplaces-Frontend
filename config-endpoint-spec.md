@@ -3,8 +3,9 @@
 ## Purpose
 
 Frontend fetches this endpoint on page load to retrieve runtime configuration,
-including secrets that must not be stored in the git repository. Eliminates the
-need to commit sensitive values (e.g. Sentry DSN) to source control.
+including environment-specific values that should not be hardcoded in the
+frontend repository. Eliminates the need to commit environment-specific values
+to source control.
 
 ---
 
@@ -39,7 +40,7 @@ No body. No query parameters. No auth headers.
   "POLYPLACES_NOMINATIM_URL": "https://nominatim.openstreetmap.org/search",
   "POLYPLACES_SEARCH_COUNTRY_CODES": "gb",
   "POLYPLACES_SEARCH_VIEWBOX": "-8.7,60.9,1.9,49.8",
-  "SENTRY_DSN": "https://c331c8882cbb042155dea75637633412@o4511310145781760.ingest.de.sentry.io/4511310163017808"
+  "SENTRY_DSN": "<SENTRY_DSN — from backend env>"
 }
 ```
 
@@ -58,7 +59,7 @@ omitting it.
 | `POLYPLACES_NOMINATIM_URL` | `https://nominatim.openstreetmap.org/search` |
 | `POLYPLACES_SEARCH_COUNTRY_CODES` | `gb` |
 | `POLYPLACES_SEARCH_VIEWBOX` | `-8.7,60.9,1.9,49.8` |
-| `SENTRY_DSN` | `https://c331c8882cbb042155dea75637633412@o4511310145781760.ingest.de.sentry.io/4511310163017808` |
+| `SENTRY_DSN` | `<SENTRY_DSN — from backend env>` |
 
 ---
 

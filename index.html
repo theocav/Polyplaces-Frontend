@@ -26,7 +26,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <link rel="stylesheet" href="./assets/css/styles.css?v=bb6b8b69"/>
   <script type="application/ld+json">
   {
@@ -183,7 +184,7 @@
         </div>
       </a>
 
-      <a class="prod-card reveal d1" href="/store/?scale=medium">
+      <a class="prod-card reveal d1" href="/store/?scale=a4">
         <div class="prod-img">
           <div class="prod-badge prod-badge-ink">Gift pick</div>
           <div class="prod-img-inner prod-img-inner-photo">
@@ -306,11 +307,12 @@
   <div class="footer-bottom"><span class="footer-copy">&copy; 2026 Polyplaces Ltd. All rights reserved.</span><span class="footer-copy">Geographic data: OpenStreetMap contributors</span></div>
 </footer>
 
-<script defer src="https://browser.sentry-cdn.com/8.40.0/bundle.min.js" crossorigin="anonymous"></script>
-<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script defer src="./assets/js/env.js?v=4b371459"></script>
-<script defer src="./assets/js/app.js?v=c29b87d1"></script>
-<script defer data-domain="polyplaces.co.uk" src="https://plausible.io/js/script.js"></script>
+<script defer src="/assets/js/sentry.bundle.min.js"></script>
+<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script defer src="./assets/js/env.js?v=11a50230"></script>
+<script defer src="./assets/js/app.js?v=f3b1735c"></script>
+<script defer src="/assets/js/analytics.js?v=e0200c5e"></script>
 
 <div id="cookie-notice" role="dialog" aria-label="Cookie notice" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e5e5e5;padding:12px 20px;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:#666;z-index:10000;flex-wrap:wrap">
   <span>We use cookies to enable essential features. <a href="/privacy/" style="color:#888;text-decoration:underline">Privacy policy</a>.</span>

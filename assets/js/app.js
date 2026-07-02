@@ -75,6 +75,7 @@ if (_hintSentinel && _mapHint) {
 }
 
 const cartStorageKey = 'polyplaces_cart_v1';
+const REQUIRE_SESSION_ID = false; // TODO(backend): flip after success_url includes session_id
 
 let storeInited = false;
 let _checkZoomOverlap = null; // set by initFrameControls, called by redrawFrame
@@ -90,7 +91,11 @@ const PRODUCT_ID_BLACKLIST = new Set(['district']);
 function sanitizeProductList(list) {
   const input = Array.isArray(list) ? list : [];
   return input.filter(
-    (product) => product && !PRODUCT_ID_BLACKLIST.has(String(product.id)),
+    (product) => product &&
+      !PRODUCT_ID_BLACKLIST.has(String(product.id)) &&
+      typeof product.id === 'string' &&
+      typeof product.name === 'string' &&
+      typeof product.priceId === 'string'
   );
 }
 
@@ -180,7 +185,7 @@ function showCheckoutBanner() {
   banner.setAttribute('aria-hidden', 'false');
   textEl.textContent = message;
 
-  if (status === 'success') {
+  if (status === 'success' && (params.get('session_id') || !REQUIRE_SESSION_ID)) {
     // Stripe returned successfully; clear the cart so users don't accidentally repurchase.
     clearCart();
   }
@@ -236,7 +241,7 @@ function renderSizeOptions() {
   products.forEach((product) => {
     const btn = document.createElement('div');
     btn.className = 'size-opt';
-    btn.dataset.productId = product.id;
+    btn.dataset.productId = escapeHtml(product.id);
     const meta = productMeta[product.id] || {};
     const badge = meta.badge ? `<span class="size-opt-badge">${meta.badge}</span>` : '';
     const artSize = meta.artSize ? ` &middot; <span class="size-opt-art">${meta.artSize}</span>` : '';
@@ -248,23 +253,25 @@ function renderSizeOptions() {
           <div class="frame-colours-header">Frame</div>
           <div class="frame-colour-boxes">
             <div class="frame-colour-box">
-              <input type="radio" id="frame-colour-none-${product.id}" name="frame-colour-${product.id}" value="" class="frame-colour-radio" checked />
-              <label for="frame-colour-none-${product.id}" class="frame-colour-label">
+              <input type="radio" id="frame-colour-none-${escapeHtml(product.id)}" name="frame-colour-${escapeHtml(product.id)}" value="" class="frame-colour-radio" checked />
+              <label for="frame-colour-none-${escapeHtml(product.id)}" class="frame-colour-label">
                 <span class="frame-colour-swatch frame-colour-swatch--none"></span>
                 <div class="frame-colour-name">No frame</div>
                 <div class="frame-colour-price">&nbsp;</div>
               </label>
             </div>
-            ${frames.map(frame => `
+            ${frames.map(frame => {
+              const safeHex = /^#[0-9a-fA-F]{3,8}$/.test(frame.colourHex) ? frame.colourHex : '#cccccc';
+              return `
               <div class="frame-colour-box">
-                <input type="radio" id="frame-colour-${frame.priceId}-${product.id}" name="frame-colour-${product.id}" value="${frame.priceId}" class="frame-colour-radio" />
-                <label for="frame-colour-${frame.priceId}-${product.id}" class="frame-colour-label">
-                  <span class="frame-colour-swatch" style="background-color:${frame.colourHex}" title="${frame.colourName}"></span>
-                  <div class="frame-colour-name">${frame.colourName}</div>
+                <input type="radio" id="frame-colour-${escapeHtml(frame.priceId)}-${escapeHtml(product.id)}" name="frame-colour-${escapeHtml(product.id)}" value="${escapeHtml(frame.priceId)}" class="frame-colour-radio" />
+                <label for="frame-colour-${escapeHtml(frame.priceId)}-${escapeHtml(product.id)}" class="frame-colour-label">
+                  <span class="frame-colour-swatch" style="background-color:${safeHex}" title="${escapeHtml(frame.colourName)}"></span>
+                  <div class="frame-colour-name">${escapeHtml(frame.colourName)}</div>
                   ${frame.unitAmount ? `<div class="frame-colour-price">+${formatPriceFromAmount(frame.unitAmount)}</div>` : ''}
                 </label>
               </div>
-            `).join('')}
+            `}).join('')}
           </div>
         </div>
       </div>
@@ -273,18 +280,29 @@ function renderSizeOptions() {
     btn.innerHTML = `
       <div class="size-opt-top">
         <div class="size-opt-info">
-          <div class="size-opt-name-row"><div class="size-opt-name">${product.name}</div>${badge}</div>
-          <div class="size-opt-sub">${product.displaySize}${artSize}</div>
+          <div class="size-opt-name-row"><div class="size-opt-name">${escapeHtml(product.name)}</div>${badge}</div>
+          <div class="size-opt-sub">${escapeHtml(product.displaySize)}${artSize}</div>
         </div>
         <div class="size-opt-price">${formatPriceFromAmount(product.unitAmount)}</div>
       </div>
       ${frameOptsHtml}
     `;
 
+    btn.setAttribute('role', 'button');
+    btn.setAttribute('tabindex', '0');
+    btn.setAttribute('aria-pressed', 'false');
+
     btn.onclick = (e) => {
       if (e.target.closest('.frame-opts')) return;
       selectProduct(product);
     };
+
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        btn.click();
+      }
+    });
 
     if (frames && frames.length > 0) {
       const colourRadios = btn.querySelectorAll('.frame-colour-radio');
@@ -316,7 +334,16 @@ function renderSizeOptions() {
       <div class="size-opt-price size-opt-price-custom">&darr; Set size</div>
     </div>
   `;
+  customBtn.setAttribute('role', 'button');
+  customBtn.setAttribute('tabindex', '0');
+  customBtn.setAttribute('aria-pressed', 'false');
   customBtn.onclick = () => activateCustomSize();
+  customBtn.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      customBtn.click();
+    }
+  });
   container.appendChild(customBtn);
 }
 
@@ -358,9 +385,15 @@ function selectProduct(product) {
   const isSquare = Math.abs((Number(product.aspectRatio) || 1) - 1) < 0.01;
   if (rotBtn) rotBtn.disabled = isSquare || product.id === 'custom';
 
-  document.querySelectorAll('.size-opt').forEach((b) => b.classList.remove('active'));
+  document.querySelectorAll('.size-opt').forEach((b) => {
+    b.classList.remove('active');
+    b.setAttribute('aria-pressed', 'false');
+  });
   const activeBtn = document.querySelector(`.size-opt[data-product-id="${product.id}"]`);
-  if (activeBtn) activeBtn.classList.add('active');
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+    activeBtn.setAttribute('aria-pressed', 'true');
+  }
 
   // Show or hide the custom size inputs panel.
   const customPanel = document.getElementById('custom-size-panel');
@@ -436,10 +469,11 @@ function _applyFramePrices(rawFramePrices) {
   Object.entries(rawFramePrices).forEach(([frameKey, framesArray]) => {
     if (Array.isArray(framesArray) && framesArray.length > 0) {
       const valid = framesArray.filter(f =>
-        f?.priceId &&
+        typeof f?.priceId === 'string' &&
         typeof f.unitAmount === 'number' &&
-        f.colourHex &&
-        f.colourName
+        typeof f.colourHex === 'string' &&
+        /^#[0-9a-fA-F]{3,8}$/.test(f.colourHex) &&
+        typeof f.colourName === 'string'
       );
       if (valid.length > 0) {
         frameOptions[frameKey] = valid.map(f => ({
@@ -517,7 +551,8 @@ async function initStore() {
   }
   const _scaleParam = new URLSearchParams(window.location.search).get('scale');
   const _preselect = _scaleParam && products.find(
-    (p) => p.name?.toLowerCase().replace(/\s+/g, '') === _scaleParam.toLowerCase()
+    (p) => p.id?.toLowerCase() === _scaleParam.toLowerCase() ||
+           p.name?.toLowerCase().replace(/\s+/g, '') === _scaleParam.toLowerCase()
   );
   if (_preselect) {
     selectProduct(_preselect);
@@ -757,6 +792,8 @@ function initMap() {
     if (!bbox) return;
     if (map.getZoom() < 12) {
       clearFrame();
+      document.getElementById('map-hint').textContent =
+        'Zoom back in to place your frame — selections clear below street level.';
     }
   });
 }
@@ -1343,6 +1380,8 @@ function addSelectionToCart() {
   cart.push(item);
   saveCart();
   renderCart();
+  const labelInput = document.getElementById('custom-location-label');
+  if (labelInput) labelInput.value = '';
 }
 
 function openCart() {
@@ -1410,8 +1449,18 @@ async function checkoutCart() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         items: cart.map((item) => ({
-          ...item,
+          priceId: item.priceId,
+          productId: item.productId,
+          bbox: item.bbox,
+          center: item.center,
+          rotation: item.rotation,
+          zoom: item.zoom,
+          location: item.location,
+          customLabel: item.customLabel,
           ...(item.frame && item.framePriceId ? { framePriceId: item.framePriceId } : {}),
+          ...(item.productId === 'custom'
+            ? { customWidthMm: item.customWidthMm, customHeightMm: item.customHeightMm }
+            : {}),
         })),
       }),
     });
@@ -1419,6 +1468,7 @@ async function checkoutCart() {
     if (!res.ok || !data.url) throw new Error(data.error || 'Checkout failed');
     window.location.href = data.url;
   } catch (err) {
+    try { localStorage.removeItem(_STORE_CACHE_KEY); localStorage.removeItem(_PRODUCTS_CACHE_KEY); } catch {}
     showBanner(err.message || 'Unable to start checkout. Please try again.', 'fail');
   } finally {
     checkoutBtn.disabled = false;
@@ -1439,7 +1489,7 @@ function initCartUI() {
 
 const _PRODUCTS_CACHE_KEY = 'polyplaces_products_cache_v1';
 const _STORE_CACHE_KEY = 'polyplaces_store_cache_v1';
-const _PRODUCTS_CACHE_TTL = 900000; // 15 minutes
+const _PRODUCTS_CACHE_TTL = 300000; // 5 minutes
 
 async function loadHomepagePrices() {
   let prods;

@@ -1,9 +1,15 @@
-node_modules/
+.git/
+.gitignore
+.assetsignore
 .claude/
 .vscode/
+node_modules/
+scripts/
 .env
 .env.example
+.htaccess
 composer.json
 package.json
 package-lock.json
-config-endpoint-spec.md
+wrangler.toml
+*.md

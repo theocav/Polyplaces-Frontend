@@ -19,6 +19,8 @@ const ASSETS = [
   'assets/css/styles.css',
   'assets/js/app.js',
   'assets/js/env.js',
+  'assets/js/contact.js',
+  'assets/js/analytics.js',
 ];
 
 // Find all HTML files in the project (excluding node_modules)
