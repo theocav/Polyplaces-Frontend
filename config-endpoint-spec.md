@@ -95,3 +95,14 @@ response that crashes the parse.
   first ~200ms of page load will not be captured. Acceptable tradeoff.
 - `POLYPLACES_API_BASE_URL` in the response is used to override the bootstrap
   value from `env.js`. Both should point to the same host in production.
+
+---
+
+## Frontend preload snapshot
+
+Frontend now ships a committed snapshot of `/api/products`
+(`assets/data/products-snapshot.json`), regenerated on every deploy via
+`npm run preserve`. When product prices or priceIds change in Stripe,
+redeploy the frontend (or at minimum run `npm run snapshot` and deploy) so the
+fallback stays current. The live API still overrides the snapshot at runtime,
+so a stale snapshot only matters when the API is down.

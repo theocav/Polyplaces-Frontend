@@ -576,6 +576,13 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
   }
 }
 
+/* Reserve layout space for product prices until loaded */
+[id^="prod-price-"][hidden] {
+  display: inline-block;
+  visibility: hidden;
+  min-height: 1.2em;
+}
+
 /* Store size loading spinner */
 @keyframes spin{to{transform:rotate(360deg)}}
 .store-size-loading{display:flex;align-items:center;gap:10px;padding:12px 14px;font-size:12px;color:var(--mid);border:1px dashed var(--border);background:var(--bg);border-radius:4px;margin-top:8px}

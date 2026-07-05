@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-07-05T17:22:00.595Z",
+  "products": [
+    {
+      "id": "prod_U8sgfxYHcb7qAm",
+      "name": "Small",
+      "priceId": "price_1TO3RKLaBxPDOAiCKnhNKpf6",
+      "unitAmount": 3200,
+      "currency": "gbp",
+      "sizeCode": "500",
+      "frameKey": "small",
+      "displaySize": "20cm x 20cm",
+      "aspectRatio": 1,
+      "sortOrder": 1
+    },
+    {
+      "id": "prod_U8shvkBITMyjcM",
+      "name": "Medium",
+      "priceId": "price_1TPqc4LaBxPDOAiChK7v23tB",
+      "unitAmount": 4000,
+      "currency": "gbp",
+      "sizeCode": "750",
+      "frameKey": "medium",
+      "displaySize": "A4",
+      "aspectRatio": 1.4,
+      "sortOrder": 2
+    },
+    {
+      "id": "prod_U8rggPA5GFtTtD",
+      "name": "Large",
+      "priceId": "price_1TO3SLLaBxPDOAiCRQkZH8ZE",
+      "unitAmount": 6500,
+      "currency": "gbp",
+      "sizeCode": "2000",
+      "frameKey": "large",
+      "displaySize": "32cm x 32cm",
+      "aspectRatio": 1,
+      "sortOrder": 5
+    }
+  ],
+  "framePrices": {
+    "small": [
+      {
+        "priceId": "price_1TPP1fLaBxPDOAiC67oYgv3P",
+        "unitAmount": 700,
+        "colourHex": "#000000",
+        "colourName": "Black"
+      },
+      {
+        "priceId": "price_1TPP1eLaBxPDOAiCBaY4BK16",
+        "unitAmount": 700,
+        "colourHex": "#FFFFFF",
+        "colourName": "White"
+      },
+      {
+        "priceId": "price_1TOPZvLaBxPDOAiCtOh3lPip",
+        "unitAmount": 700,
+        "colourHex": "#D8B589",
+        "colourName": "Oak"
+      }
+    ],
+    "large": [
+      {
+        "priceId": "price_1TPP0MLaBxPDOAiCtyT8tjvp",
+        "unitAmount": 1600,
+        "colourHex": "#000000",
+        "colourName": "Black"
+      },
+      {
+        "priceId": "price_1TPP0MLaBxPDOAiCtmhxnTi5",
+        "unitAmount": 1600,
+        "colourHex": "#FFFFFF",
+        "colourName": "White"
+      },
+      {
+        "priceId": "price_1TPP0LLaBxPDOAiCpCK07S8v",
+        "unitAmount": 1600,
+        "colourHex": "#D8B589",
+        "colourName": "Oak"
+      }
+    ],
+    "medium": [
+      {
+        "priceId": "price_1TPOj5LaBxPDOAiCvRVTbLNb",
+        "unitAmount": 1000,
+        "colourHex": "#000000",
+        "colourName": "Black"
+      },
+      {
+        "priceId": "price_1TPOj5LaBxPDOAiCfI11EtqK",
+        "unitAmount": 1000,
+        "colourHex": "#FFFFFF",
+        "colourName": "White"
+      },
+      {
+        "priceId": "price_1TPOj4LaBxPDOAiC790EPOpc",
+        "unitAmount": 1000,
+        "colourHex": "#D8B589",
+        "colourName": "Oak"
+      }
+    ]
+  }
+}

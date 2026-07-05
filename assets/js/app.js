@@ -76,6 +76,10 @@ if (_hintSentinel && _mapHint) {
 
 const cartStorageKey = 'polyplaces_cart_v1';
 const REQUIRE_SESSION_ID = false; // TODO(backend): flip after success_url includes session_id
+const _PRODUCTS_CACHE_KEY = 'polyplaces_products_cache_v1';
+const _STORE_CACHE_KEY = 'polyplaces_store_cache_v1';
+const _PRODUCTS_CACHE_TTL = 300000; // 5 minutes
+const _SNAPSHOT_URL = '/assets/data/products-snapshot.json';
 
 let storeInited = false;
 let _checkZoomOverlap = null; // set by initFrameControls, called by redrawFrame
@@ -97,6 +101,82 @@ function sanitizeProductList(list) {
       typeof product.name === 'string' &&
       typeof product.priceId === 'string'
   );
+}
+
+// Returns { products, framePrices, source } as fast as possible:
+// fresh localStorage cache -> committed snapshot -> live API (blocking, last resort).
+// Independently: if the cache wasn't fresh, kicks off a background API refresh
+// and invokes onUpdate(data) when the live payload differs from what was returned.
+async function getProductData(onUpdate) {
+  const readCache = () => {
+    try {
+      const c = JSON.parse(localStorage.getItem(_STORE_CACHE_KEY));
+      if (c && typeof c.ts === 'number' && Array.isArray(c.products)) return c;
+    } catch (_) {}
+    return null;
+  };
+
+  const fetchLive = async () => {
+    const res = await fetch(`${apiBase}/api/products`);
+    if (!res.ok) throw new Error(`Products fetch failed: ${res.status}`);
+    const data = await res.json();
+    const products = sanitizeProductList(
+      Array.isArray(data?.products) ? data.products : Array.isArray(data) ? data : []
+    );
+    const payload = { products, framePrices: data?.framePrices || null };
+    try {
+      localStorage.setItem(_STORE_CACHE_KEY, JSON.stringify({ ts: Date.now(), ...payload }));
+      localStorage.setItem(_PRODUCTS_CACHE_KEY, JSON.stringify({ ts: Date.now(), products }));
+    } catch (_) {}
+    return payload;
+  };
+
+  const cached = readCache();
+  const cacheFresh = cached && Date.now() - cached.ts < _PRODUCTS_CACHE_TTL;
+
+  let initial = null;
+  if (cached) {
+    initial = { products: sanitizeProductList(cached.products), framePrices: cached.framePrices || null, source: 'cache' };
+  } else {
+    try {
+      const res = await fetch(_SNAPSHOT_URL, { cache: 'no-cache' });
+      if (res.ok) {
+        const snap = await res.json();
+        if (Array.isArray(snap?.products) && snap.products.length > 0) {
+          initial = { products: sanitizeProductList(snap.products), framePrices: snap.framePrices || null, source: 'snapshot' };
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (!cacheFresh) {
+    // Background revalidation — never blocks initial render when we have data.
+    const revalidate = fetchLive()
+      .then((live) => {
+        if (
+          initial &&
+          typeof onUpdate === 'function' &&
+          JSON.stringify({ p: live.products, f: live.framePrices }) !==
+            JSON.stringify({ p: initial.products, f: initial.framePrices })
+        ) {
+          onUpdate(live);
+        }
+        return live;
+      })
+      .catch((err) => {
+        if (typeof Sentry !== 'undefined') Sentry.captureException(err);
+        return null;
+      });
+
+    if (!initial) {
+      // No cache, no snapshot: the live fetch is all we have — await it.
+      const live = await revalidate;
+      if (live) return { ...live, source: 'live' };
+      return null;
+    }
+  }
+
+  return initial;
 }
 
 const productMeta = {
@@ -488,31 +568,26 @@ function _applyFramePrices(rawFramePrices) {
 }
 
 async function loadProducts() {
-  try {
-    let list, rawFramePrices;
-
-    // Try store cache first (products + framePrices, 1-hour TTL).
-    let cached;
-    try { cached = JSON.parse(localStorage.getItem(_STORE_CACHE_KEY)); } catch (_) {}
-    if (cached && typeof cached.ts === 'number' && Date.now() - cached.ts < _PRODUCTS_CACHE_TTL && Array.isArray(cached.products)) {
-      list = cached.products;
-      rawFramePrices = cached.framePrices || null;
-    } else {
-      const res = await fetch(`${apiBase}/api/products`);
-      const data = await res.json();
-      list = Array.isArray(data?.products) ? data.products : Array.isArray(data) ? data : [];
-      rawFramePrices = data?.framePrices || null;
-      const sanitized = sanitizeProductList(list);
-      // Save to store cache (full data) and homepage cache (products only).
-      try { localStorage.setItem(_STORE_CACHE_KEY, JSON.stringify({ ts: Date.now(), products: sanitized, framePrices: rawFramePrices })); } catch (_) {}
-      try { localStorage.setItem(_PRODUCTS_CACHE_KEY, JSON.stringify({ ts: Date.now(), products: sanitized })); } catch (_) {}
-    }
-
-    products = sanitizeProductList(list);
-    _applyFramePrices(rawFramePrices);
+  const apply = (data) => {
+    products = sanitizeProductList(data.products);
+    _applyFramePrices(data.framePrices);
     renderSizeOptions();
+    // Keep the current selection valid after a background update.
+    if (selectedProduct && selectedProduct.id !== 'custom') {
+      const still = products.find((p) => p.id === selectedProduct.id);
+      if (still) selectProduct(still);
+      else if (products.length > 0) selectProduct(products[0]);
+    }
+  };
+
+  try {
+    const data = await getProductData(apply);
     const loadingEl = document.getElementById('store-size-loading');
     if (loadingEl) loadingEl.classList.add('hidden');
+    if (!data) throw new Error('No product data available');
+    products = sanitizeProductList(data.products);
+    _applyFramePrices(data.framePrices);
+    renderSizeOptions();
     return products;
   } catch (err) {
     if (typeof Sentry !== 'undefined') Sentry.captureException(err);
@@ -520,7 +595,7 @@ async function loadProducts() {
     if (loadingEl) loadingEl.classList.add('hidden');
     const emptyEl = document.getElementById('size-options-empty');
     if (emptyEl) {
-      emptyEl.textContent = 'Sizes failed to load. Please refresh the page.';
+      emptyEl.textContent = 'Sizes failed to load. Please check your connection and refresh.';
       emptyEl.classList.remove('hidden');
     }
     return [];
@@ -1487,31 +1562,19 @@ function initCartUI() {
   document.getElementById('cart-checkout').onclick = checkoutCart;
 }
 
-const _PRODUCTS_CACHE_KEY = 'polyplaces_products_cache_v1';
-const _STORE_CACHE_KEY = 'polyplaces_store_cache_v1';
-const _PRODUCTS_CACHE_TTL = 300000; // 5 minutes
-
 async function loadHomepagePrices() {
-  let prods;
-  try {
-    let cached;
-    try { cached = JSON.parse(localStorage.getItem(_PRODUCTS_CACHE_KEY)); } catch (_) {}
-    if (cached && typeof cached.ts === 'number' && Date.now() - cached.ts < _PRODUCTS_CACHE_TTL && Array.isArray(cached.products)) {
-      prods = cached.products;
-    } else {
-      const res = await fetch(`${apiBase}/api/products`);
-      if (!res.ok) throw new Error(`Products fetch failed: ${res.status}`);
-      const data = await res.json();
-      prods = sanitizeProductList(Array.isArray(data?.products) ? data.products : Array.isArray(data) ? data : []);
-      try { localStorage.setItem(_PRODUCTS_CACHE_KEY, JSON.stringify({ ts: Date.now(), products: prods })); } catch (_) {}
-    }
-    prods.forEach(p => {
+  const paint = (prods) => {
+    prods.forEach((p) => {
       const el = document.getElementById(`prod-price-${p.frameKey}`);
       if (el && typeof p.unitAmount === 'number' && p.unitAmount > 0) {
         el.textContent = `From \u00a3${Math.round(p.unitAmount / 100)}`;
         el.removeAttribute('hidden');
       }
     });
+  };
+  try {
+    const data = await getProductData((live) => paint(live.products));
+    if (data) paint(data.products);
   } catch (err) {
     if (typeof Sentry !== 'undefined') Sentry.captureException(err);
     console.error('[Polyplaces] Failed to load homepage prices:', err);

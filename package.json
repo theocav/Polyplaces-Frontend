@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "bust": "node scripts/bust-cache.js",
-    "preserve": "node scripts/generate-env.js && node scripts/bust-cache.js",
+    "snapshot": "node scripts/snapshot-products.js",
+    "preserve": "node scripts/generate-env.js && node scripts/snapshot-products.js && node scripts/bust-cache.js",
     "serve": "serve -l 3000 ."
   },
   "devDependencies": {
