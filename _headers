@@ -4,7 +4,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://unpkg.com https://plausible.io https://connect.facebook.net 'sha256-o7wtyd3U9H5CyUDVNlXVr06/MkYOmQq1u2QXfj23xEo='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://*.tile.openstreetmap.org https://www.facebook.com data:; connect-src 'self' https://api.polyplaces.co.uk https://nominatim.openstreetmap.org https://plausible.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://www.facebook.com https://connect.facebook.net; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://api.polyplaces.co.uk; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://unpkg.com https://plausible.io https://connect.facebook.net 'sha256-o7wtyd3U9H5CyUDVNlXVr06/MkYOmQq1u2QXfj23xEo='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://*.tile.openstreetmap.org https://www.facebook.com data:; connect-src 'self' https://api.polyplaces.co.uk https://nominatim.openstreetmap.org https://plausible.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://www.facebook.com https://connect.facebook.net https://unpkg.com; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://api.polyplaces.co.uk; upgrade-insecure-requests
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
