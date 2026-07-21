@@ -266,6 +266,25 @@ function showCheckoutBanner() {
   textEl.textContent = message;
 
   if (status === 'success' && (params.get('session_id') || !REQUIRE_SESSION_ID)) {
+    // Fire the Meta Purchase event once per Stripe session before the cart is cleared.
+    if (typeof fbq === 'function') {
+      const sessionId = params.get('session_id') || '';
+      let alreadyTracked = false;
+      try {
+        alreadyTracked = sessionId && localStorage.getItem('_fbq_purchased') === sessionId;
+      } catch (_) {}
+      if (!alreadyTracked) {
+        const orderValue = cart.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
+        fbq('track', 'Purchase', {
+          content_ids: cart.map((i) => i.priceId),
+          content_type: 'product',
+          num_items: cart.length,
+          value: orderValue,
+          currency: 'GBP',
+        });
+        try { if (sessionId) localStorage.setItem('_fbq_purchased', sessionId); } catch (_) {}
+      }
+    }
     // Stripe returned successfully; clear the cart so users don't accidentally repurchase.
     clearCart();
   }
@@ -430,6 +449,15 @@ function renderSizeOptions() {
 function selectProduct(product) {
   if (!product) return;
   const isNewProduct = !selectedProduct || selectedProduct.id !== product.id;
+  if (isNewProduct && typeof fbq === 'function') {
+    fbq('track', 'ViewContent', {
+      content_ids: [product.priceId],
+      content_name: product.name,
+      content_type: 'product',
+      value: Number.isFinite(Number(product.unitAmount)) ? Number(product.unitAmount) / 100 : 0,
+      currency: 'GBP',
+    });
+  }
   const prevBBox = bbox ? { ...bbox } : null;
   const prevCenter = prevBBox
     ? { lat: (prevBBox.south + prevBBox.north) / 2, lng: (prevBBox.west + prevBBox.east) / 2 }
@@ -1461,6 +1489,15 @@ function addSelectionToCart() {
     }),
   };
   cart.push(item);
+  if (typeof fbq === 'function') {
+    fbq('track', 'AddToCart', {
+      content_ids: [item.priceId],
+      content_name: item.name,
+      content_type: 'product',
+      value: Number(item.price) || 0,
+      currency: 'GBP',
+    });
+  }
   saveCart();
   renderCart();
   const labelInput = document.getElementById('custom-location-label');
@@ -1526,7 +1563,16 @@ async function checkoutCart() {
   const checkoutBtn = document.getElementById('cart-checkout');
   checkoutBtn.disabled = true;
   checkoutBtn.textContent = 'Redirecting...';
-  if (typeof fbq === 'function') fbq('track', 'InitiateCheckout');
+  if (typeof fbq === 'function') {
+    const coValue = cart.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
+    fbq('track', 'InitiateCheckout', {
+      content_ids: cart.map((i) => i.priceId),
+      content_type: 'product',
+      num_items: cart.length,
+      value: coValue,
+      currency: 'GBP',
+    });
+  }
   try {
     const res = await fetch(`${apiBase}/api/checkout`, {
       method: 'POST',

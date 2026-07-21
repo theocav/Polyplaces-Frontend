@@ -40,6 +40,7 @@
     })
     .then(function (res) {
       if (!res.ok) throw new Error('server');
+      if (typeof fbq === 'function') fbq('track', 'Lead', { content_name: 'Contact form' });
       showStatus('success', 'Message sent — we'll be in touch within 1–2 business days.');
       form.reset();
     })
