@@ -1526,6 +1526,7 @@ async function checkoutCart() {
   const checkoutBtn = document.getElementById('cart-checkout');
   checkoutBtn.disabled = true;
   checkoutBtn.textContent = 'Redirecting...';
+  if (typeof fbq === 'function') fbq('track', 'InitiateCheckout');
   try {
     const res = await fetch(`${apiBase}/api/checkout`, {
       method: 'POST',
