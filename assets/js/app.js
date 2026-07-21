@@ -1417,6 +1417,14 @@ function renderCart() {
 
 function addSelectionToCart() {
   if (!selectedProduct || !selectionMeta) return;
+
+  const CART_LIMIT = 10;
+  if (cart.length >= CART_LIMIT) {
+    document.getElementById('order-status-msg').textContent = `Cart limit reached (${CART_LIMIT} items max).`;
+    showBanner(`You can only add up to ${CART_LIMIT} items to your cart.`, 'fail');
+    return;
+  }
+
   const id =
     typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
