@@ -1903,19 +1903,40 @@ if (document.getElementById('landing')) {
   loadHomepagePrices();
 }
 
-// Cookie notice — runs on any page that includes #cookie-notice
+// Cookie consent — injected on every page so consent can be captured
+// wherever the visitor lands (not just the homepage).
 (function () {
-  const n = document.getElementById('cookie-notice');
-  if (!n || localStorage.getItem('pp_cn')) return;
-  n.style.display = 'flex';
+  if (localStorage.getItem('pp_cn')) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'cookie-consent-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Cookie consent');
+  overlay.innerHTML =
+    '<div class="cookie-consent-card">' +
+      '<h3 class="cookie-consent-title">We value your privacy</h3>' +
+      '<p class="cookie-consent-text">We use essential cookies to run this site and, with your consent, ' +
+      'analytics cookies to understand how it&rsquo;s used so we can improve it. ' +
+      'Read our <a href="/privacy/">privacy policy</a>.</p>' +
+      '<div class="cookie-consent-actions">' +
+        '<button type="button" class="cookie-consent-btn cookie-consent-reject" id="cookie-reject">Reject non-essential</button>' +
+        '<button type="button" class="cookie-consent-btn cookie-consent-accept" id="cookie-accept">Accept all</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+
   const dismiss = (val) => {
-    n.style.display = 'none';
     localStorage.setItem('pp_cn', val);
+    overlay.remove();
+    document.body.style.overflow = '';
   };
-  const accept = document.getElementById('cookie-accept');
-  const reject = document.getElementById('cookie-reject');
-  if (accept) accept.onclick = () => dismiss('1');
-  if (reject) reject.onclick = () => dismiss('0');
+  document.getElementById('cookie-accept').onclick = () => {
+    dismiss('1');
+    if (typeof window.ppLoadGA === 'function') window.ppLoadGA();
+  };
+  document.getElementById('cookie-reject').onclick = () => dismiss('0');
 }());
 
 if (document.getElementById('storePage')) {

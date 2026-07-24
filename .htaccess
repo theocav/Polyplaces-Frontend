@@ -28,11 +28,11 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
   # Content Security Policy
   Header always set Content-Security-Policy "\
     default-src 'self'; \
-    script-src 'self' https://unpkg.com https://plausible.io https://browser.sentry-cdn.com; \
+    script-src 'self' https://unpkg.com https://browser.sentry-cdn.com https://www.googletagmanager.com; \
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; \
     font-src 'self' https://fonts.gstatic.com; \
-    img-src 'self' https://*.tile.openstreetmap.org data:; \
-    connect-src 'self' https://unpkg.com https://api.polyplaces.co.uk https://nominatim.openstreetmap.org https://plausible.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://browser.sentry-cdn.com; \
+    img-src 'self' https://*.tile.openstreetmap.org https://www.google-analytics.com data:; \
+    connect-src 'self' https://unpkg.com https://api.polyplaces.co.uk https://nominatim.openstreetmap.org https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://browser.sentry-cdn.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com; \
     frame-ancestors 'none'; \
     base-uri 'self'; \
     form-action 'self' https://api.polyplaces.co.uk; \
