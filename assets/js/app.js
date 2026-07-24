@@ -282,6 +282,20 @@ function showCheckoutBanner() {
           value: orderValue,
           currency: 'GBP',
         });
+        // GA4 purchase — transaction_id (Stripe session) dedups on page refresh.
+        if (typeof window.ppTrackGA === 'function') {
+          window.ppTrackGA('purchase', {
+            transaction_id: sessionId || undefined,
+            value: orderValue,
+            currency: 'GBP',
+            items: cart.map((i) => ({
+              item_id: i.priceId,
+              item_name: i.name,
+              price: Number(i.price) || 0,
+              quantity: 1,
+            })),
+          });
+        }
         try { if (sessionId) localStorage.setItem('_fbq_purchased', sessionId); } catch (_) {}
       }
     }
@@ -456,6 +470,14 @@ function selectProduct(product) {
       content_type: 'product',
       value: Number.isFinite(Number(product.unitAmount)) ? Number(product.unitAmount) / 100 : 0,
       currency: 'GBP',
+    });
+  }
+  if (isNewProduct && typeof window.ppTrackGA === 'function') {
+    const viewValue = Number.isFinite(Number(product.unitAmount)) ? Number(product.unitAmount) / 100 : 0;
+    window.ppTrackGA('view_item', {
+      value: viewValue,
+      currency: 'GBP',
+      items: [{ item_id: product.priceId, item_name: product.name, price: viewValue, quantity: 1 }],
     });
   }
   const prevBBox = bbox ? { ...bbox } : null;
@@ -1498,6 +1520,13 @@ function addSelectionToCart() {
       currency: 'GBP',
     });
   }
+  if (typeof window.ppTrackGA === 'function') {
+    window.ppTrackGA('add_to_cart', {
+      value: Number(item.price) || 0,
+      currency: 'GBP',
+      items: [{ item_id: item.priceId, item_name: item.name, price: Number(item.price) || 0, quantity: 1 }],
+    });
+  }
   saveCart();
   renderCart();
   const labelInput = document.getElementById('custom-location-label');
@@ -1571,6 +1600,19 @@ async function checkoutCart() {
       num_items: cart.length,
       value: coValue,
       currency: 'GBP',
+    });
+  }
+  if (typeof window.ppTrackGA === 'function') {
+    const coValueGA = cart.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
+    window.ppTrackGA('begin_checkout', {
+      value: coValueGA,
+      currency: 'GBP',
+      items: cart.map((i) => ({
+        item_id: i.priceId,
+        item_name: i.name,
+        price: Number(i.price) || 0,
+        quantity: 1,
+      })),
     });
   }
   try {
