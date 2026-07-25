@@ -1983,8 +1983,6 @@ if (document.getElementById('landing')) {
 
 if (document.getElementById('storePage')) {
   initStore();
-} else if (document.getElementById('etsyPage')) {
-  initEtsy();
 }
 
 // ── Etsy tool page ─────────────────────────────────────────────────────────────
@@ -2052,6 +2050,10 @@ async function copyBoundingBox() {
   } catch {
     flash('Copy failed', false);
   }
+}
+
+if (document.getElementById('etsyPage')) {
+  initEtsy();
 }
 
 async function reviewSelection() {
