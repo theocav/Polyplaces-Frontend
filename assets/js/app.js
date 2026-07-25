@@ -1983,6 +1983,75 @@ if (document.getElementById('landing')) {
 
 if (document.getElementById('storePage')) {
   initStore();
+} else if (document.getElementById('etsyPage')) {
+  initEtsy();
+}
+
+// ── Etsy tool page ─────────────────────────────────────────────────────────────
+// Standalone variant of the store: fixed sizes, no pricing, no cart, no right bar.
+// A single Copy button places the current frame's bounding box on the clipboard.
+const ETSY_PRODUCTS = [
+  { id: 'etsy-15x15', name: '15 × 15', displaySize: '15 × 15 cm', sizeCode: 150 * CUSTOM_MAP_SCALE, aspectRatio: 1 },
+  { id: 'etsy-29x21', name: '29 × 21', displaySize: '29 × 21 cm', sizeCode: 290 * CUSTOM_MAP_SCALE, aspectRatio: 210 / 290 },
+  { id: 'etsy-25x25', name: '25 × 25', displaySize: '25 × 25 cm', sizeCode: 250 * CUSTOM_MAP_SCALE, aspectRatio: 1 },
+  { id: 'etsy-30x30', name: '30 × 30', displaySize: '30 × 30 cm', sizeCode: 300 * CUSTOM_MAP_SCALE, aspectRatio: 1 },
+];
+
+function initEtsy() {
+  if (storeInited) return;
+  storeInited = true;
+
+  products = ETSY_PRODUCTS;
+  renderSizeOptions();
+
+  initMap();
+  initFrameControls();
+  initMobileInputFix();
+
+  selectProduct(products[0]);
+
+  const copyBtn = document.getElementById('etsy-copy');
+  if (copyBtn) copyBtn.onclick = copyBoundingBox;
+}
+
+async function copyBoundingBox() {
+  const btn = document.getElementById('etsy-copy');
+  if (!bbox) return;
+  // Standard bbox order: west,south,east,north (minLon,minLat,maxLon,maxLat).
+  const text = [bbox.west, bbox.south, bbox.east, bbox.north]
+    .map((n) => Number(n).toFixed(6))
+    .join(',');
+
+  const flash = (label, ok) => {
+    if (!btn) return;
+    const original = btn.dataset.label || btn.textContent;
+    btn.dataset.label = original;
+    btn.textContent = label;
+    btn.classList.toggle('is-copied', ok);
+    btn.classList.toggle('is-copyfail', !ok);
+    setTimeout(() => {
+      btn.textContent = btn.dataset.label;
+      btn.classList.remove('is-copied', 'is-copyfail');
+    }, 1600);
+  };
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    flash('✓ Copied', true);
+  } catch {
+    flash('Copy failed', false);
+  }
 }
 
 async function reviewSelection() {
