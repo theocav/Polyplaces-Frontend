@@ -78,7 +78,7 @@
       } else if (msg && msg !== 'server') {
         showStatus('error', msg);
       } else {
-        showStatus('error', 'Something went wrong. Please try again or email us directly at contact@polyplaces.co.uk.');
+        showStatus('error', 'Something went wrong. Please try again or email us directly at info@polyplaces.co.uk.');
       }
       if (typeof window.ppTurnstileReset === 'function') window.ppTurnstileReset(form);
     })

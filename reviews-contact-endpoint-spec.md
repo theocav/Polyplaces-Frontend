@@ -246,14 +246,16 @@ against a botnet.
   | `location` | optional, ≤ 80 |
   | `rating` | required, integer, 1–5 (`5.0` and `"5"` are rejected — send a JSON number) |
   | `title` | optional, ≤ 120 |
-  | `body` | required, 20–2000 |
+  | `body` | **optional**, ≤ 2000. A star rating on its own is a valid review — do not impose a minimum length |
   | `email` | required, ≤ 254, `isValidEmail` |
   | `orderRef` | optional, ≤ 64 |
   | `message` (contact) | required, 10–4000 |
 
 - Strip C0/C1 control characters except `\n` and `\t`; collapse runs of 3+ newlines.
 - Reject if the URL characters in `body` exceed 60% of its length → `400 "Please remove
-  links from your review."` A review with more link than prose is spam every time.
+  links from your review."` A review with more link than prose is spam every time. Skip
+  this check when `body` is empty — a rating-only review has nothing to measure, and a
+  naive ratio check on an empty string divides by zero.
 - Unknown keys: drop silently, don't 400. A future frontend field must not break an
   older worker.
 
@@ -359,7 +361,6 @@ rule can't.
 | 400 | `Field too long: <f>` | Over cap |
 | 400 | `Invalid email address` | `isValidEmail` failed |
 | 400 | `Rating must be a whole number between 1 and 5.` | Bad `rating` |
-| 400 | `Your review is too short.` | `body` < 20 chars |
 | 400 | `Please remove links from your review.` | URL-dense body |
 | 400 | `Verification failed. Please refresh and try again.` | Turnstile failed/missing/unreachable |
 | 403 | `Not allowed by CORS` | Origin not allowlisted |

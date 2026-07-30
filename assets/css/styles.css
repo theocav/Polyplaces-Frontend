@@ -809,6 +809,10 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 .review-card.skeleton .sk-line.mid{width:75%}
 @keyframes sk-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
+/* A rating with no written review. Grid rows stretch, so this only shows when
+   a whole row is rating-only — keep it from collapsing to a sliver. */
+.review-card.is-rating-only{min-height:120px;display:flex;flex-direction:column;justify-content:space-between}
+
 .reviews-more{display:flex;justify-content:center;margin-top:36px}
 .reviews-more[hidden]{display:none}
 .reviews-empty{

@@ -51,10 +51,20 @@
     var card = el('div', 'review-card' + (extraClass ? ' ' + extraClass : ''));
     card.appendChild(el('div', 'stars', starString(review.rating)));
 
-    var text = review.body || '';
-    if (review.title) text = '“' + review.title + '” — ' + text;
-    else text = '"' + text + '"';
-    card.appendChild(el('p', 'review-text', text));
+    // Rating-only reviews are allowed, so both title and body may be absent.
+    // Render whichever exists; skip the paragraph entirely when neither does,
+    // rather than printing a pair of empty quote marks.
+    var body  = review.body || '';
+    var title = review.title || '';
+    if (body || title) {
+      var text;
+      if (title && body)  text = '“' + title + '” — ' + body;
+      else if (title)     text = '“' + title + '”';
+      else                text = '"' + body + '"';
+      card.appendChild(el('p', 'review-text', text));
+    } else {
+      card.classList.add('is-rating-only');
+    }
 
     card.appendChild(reviewerNode(review));
     return card;
@@ -204,7 +214,7 @@
           author: { '@type': 'Person', name: r.name || 'Anonymous' },
           datePublished: r.createdAt || undefined,
           name: r.title || undefined,
-          reviewBody: r.body || '',
+          reviewBody: r.body || undefined,
           reviewRating: {
             '@type': 'Rating',
             ratingValue: Number(r.rating) || 5,
@@ -267,10 +277,8 @@
     var rating   = ratingEl ? parseInt(ratingEl.value, 10) : 0;
 
     if (!name)   { return showStatus('error', 'Please tell us your name.'); }
+    // A star rating on its own is a valid review. Written text is optional.
     if (!rating) { return showStatus('error', 'Please choose a star rating.'); }
-    if (body.length < 20) {
-      return showStatus('error', 'Please write a little more — at least 20 characters.');
-    }
     var emailInput = document.getElementById('rv-email');
     if (!email || !emailInput.checkValidity() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showStatus('error', 'Please enter a valid email address.');
@@ -324,7 +332,7 @@
         } else if (msg && msg !== 'server') {
           showStatus('error', msg);
         } else {
-          showStatus('error', 'Something went wrong. Please try again, or email us at contact@polyplaces.co.uk.');
+          showStatus('error', 'Something went wrong. Please try again, or email us at info@polyplaces.co.uk.');
         }
         if (typeof window.ppTurnstileReset === 'function') window.ppTurnstileReset(form);
       })

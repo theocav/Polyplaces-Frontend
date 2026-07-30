@@ -52,7 +52,7 @@ curl -i -X POST '<webhook URL>' -H 'X-Polyplaces-Secret: <secret>' -d '{}' # exp
 | `location` | string | Worker | ≤ 80, may be `""` |
 | `rating` | integer | Worker | 1–5, already validated |
 | `title` | string | Worker | ≤ 120, may be `""` |
-| `body` | string | Worker | 20–2000 |
+| `body` | string | Worker | ≤ 2000, **may be empty**. A star rating on its own is a valid review |
 | `email` | string | Worker | ≤ 254. **Moderation only. Never leaves n8n** |
 | `order_ref` | string | Worker | optional; lets you verify a real purchase |
 | `status` | enum | n8n | `pending` \| `approved` \| `rejected`. Default `pending` |
@@ -113,6 +113,8 @@ control characters stripped, rating an integer 1–5, email syntactically valid)
    in rough order of value:
    - reject if `body` contains a URL (near-universal spam signal on a review form)
    - reject on a profanity/keyword list
+   - note that an empty `body` is legitimate, not suspicious — a rating-only review is
+     the normal case for someone who can't be bothered to write. Don't auto-reject it
    - flag if `source_ip_hash` already has ≥ 3 rows in the last 24 h
    - flag if `email` domain is a known disposable provider
    - an LLM node scoring "is this a plausible review of a 3D-printed map sculpture?"
