@@ -596,6 +596,9 @@ function handleFrameChange(product, frameValue, isEnabled) {
 
 function _applyFramePrices(rawFramePrices) {
   if (!rawFramePrices || typeof rawFramePrices !== 'object') return;
+  // Build a fresh map so a background refresh cannot leave behind frame keys or
+  // colours the API no longer sells (and their old prices).
+  const next = {};
   Object.entries(rawFramePrices).forEach(([frameKey, framesArray]) => {
     if (Array.isArray(framesArray) && framesArray.length > 0) {
       const valid = framesArray.filter(f =>
@@ -606,8 +609,11 @@ function _applyFramePrices(rawFramePrices) {
         typeof f.colourName === 'string'
       );
       if (valid.length > 0) {
-        frameOptions[frameKey] = valid.map(f => ({
+        next[frameKey] = valid.map(f => ({
           priceId: f.priceId,
+          // Optional: a cached response from before the API returned this field has
+          // no productId, in which case checkout falls back to the legacy payload.
+          ...(typeof f.productId === 'string' && f.productId ? { productId: f.productId } : {}),
           unitAmount: f.unitAmount,
           colourHex: f.colourHex,
           colourName: f.colourName,
@@ -615,6 +621,7 @@ function _applyFramePrices(rawFramePrices) {
       }
     }
   });
+  if (Object.keys(next).length > 0) frameOptions = next;
 }
 
 async function loadProducts() {
@@ -1503,6 +1510,7 @@ function addSelectionToCart() {
     zoom: selectionMeta.zoom || 1,
     frame: hasFrame,
     framePriceId: hasFrame ? selectedFrameData.priceId : null,
+    frameProductId: hasFrame ? (selectedFrameData.productId || null) : null,
     frameUnitAmount,
     frameName: hasFrame ? selectedFrameData.colourName : null,
     ...(selectedProduct.id === 'custom' && {
@@ -1573,6 +1581,19 @@ function closeCart() {
   lastCartFocus = null;
 }
 
+// Carts persisted before frameProductId existed only have framePriceId. Recover the
+// product ID from the live frame options so those carts still get a v2 payload.
+function _resolveFrameProductId(item) {
+  if (!item || !item.framePriceId) return null;
+  if (item.frameProductId) return item.frameProductId;
+  for (const list of Object.values(frameOptions || {})) {
+    if (!Array.isArray(list)) continue;
+    const hit = list.find((f) => f.priceId === item.framePriceId);
+    if (hit && hit.productId) return hit.productId;
+  }
+  return null;
+}
+
 async function checkoutCart() {
   if (cart.length === 0) return;
 
@@ -1620,20 +1641,33 @@ async function checkoutCart() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        items: cart.map((item) => ({
-          priceId: item.priceId,
-          productId: item.productId,
-          bbox: item.bbox,
-          center: item.center,
-          rotation: item.rotation,
-          zoom: item.zoom,
-          location: item.location,
-          customLabel: item.customLabel,
-          ...(item.frame && item.framePriceId ? { framePriceId: item.framePriceId } : {}),
-          ...(item.productId === 'custom'
-            ? { customWidthMm: item.customWidthMm, customHeightMm: item.customHeightMm }
-            : {}),
-        })),
+        items: cart.map((item) => {
+          const framed = !!(item.frame && item.framePriceId);
+          const frameProductId = framed ? _resolveFrameProductId(item) : null;
+          return {
+            priceId: item.priceId,
+            productId: item.productId,
+            ...(item.sizeCode != null && item.sizeCode !== ''
+              ? { sizeCode: String(item.sizeCode) }
+              : {}),
+            bbox: item.bbox,
+            center: item.center,
+            rotation: item.rotation,
+            zoom: item.zoom,
+            location: item.location,
+            customLabel: item.customLabel,
+            // v2 shape once the frame's productId is known; the backend still accepts
+            // the flat framePriceId, so an unknown productId falls back rather than 400s.
+            ...(framed
+              ? frameProductId
+                ? { framed: true, frame: { productId: frameProductId, priceId: item.framePriceId } }
+                : { framePriceId: item.framePriceId }
+              : { framed: false }),
+            ...(item.priceId === 'custom'
+              ? { customWidthMm: item.customWidthMm, customHeightMm: item.customHeightMm }
+              : {}),
+          };
+        }),
       }),
     });
     const data = await res.json();

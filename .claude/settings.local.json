@@ -4,7 +4,9 @@
       "Bash(grep -r \"stripe\\\\|payment\\\\|checkout\" /c/Users/theoc/Documents/Playground/*.html --include=\"*.html\")",
       "Bash(npm run *)",
       "Bash(curl -s http://localhost:3000/store/)",
-      "Bash(grep -E \"\\\\.html$|/$\")"
+      "Bash(grep -E \"\\\\.html$|/$\")",
+      "WebFetch(domain:developers.cloudflare.com)",
+      "mcp__plugin_cloudflare_cloudflare-api__execute"
     ]
   },
   "enabledPlugins": {
