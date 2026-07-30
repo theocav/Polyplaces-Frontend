@@ -19,22 +19,22 @@
   src="https://www.facebook.com/tr?id=1684282595954858&ev=PageView&noscript=1"
   /></noscript>
   <!-- End Meta Pixel Code -->
-  <title>Contact &mdash; Polyplaces</title>
-  <meta name="description" content="Get in touch with Polyplaces for commissions, questions, or anything else."/>
+  <title>Reviews &mdash; Polyplaces</title>
+  <meta name="description" content="What our customers say about their Polyplaces 3D map sculptures &mdash; and leave a review of your own."/>
   <meta name="referrer" content="strict-origin-when-cross-origin"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <meta name="theme-color" content="#f7f4ef"/>
   <meta name="api-base" content="https://api.polyplaces.co.uk"/>
-  <link rel="canonical" href="https://polyplaces.co.uk/contact/"/>
-  <meta property="og:title" content="Contact â€” Polyplaces"/>
-  <meta property="og:description" content="Get in touch with Polyplaces for commissions, questions, or anything else. We respond within 1â€“2 business days."/>
+  <link rel="canonical" href="https://polyplaces.co.uk/reviews/"/>
+  <meta property="og:title" content="Reviews &mdash; Polyplaces"/>
+  <meta property="og:description" content="What our customers say about their Polyplaces 3D map sculptures &mdash; and leave a review of your own."/>
   <meta property="og:type" content="website"/>
   <meta property="og:site_name" content="Polyplaces"/>
-  <meta property="og:url" content="https://polyplaces.co.uk/contact/"/>
+  <meta property="og:url" content="https://polyplaces.co.uk/reviews/"/>
   <meta property="og:image" content="https://polyplaces.co.uk/assets/imgs/74c45980-8acc-4220-b7b1-4b813a2ba1a1.webp"/>
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Contact â€” Polyplaces"/>
-  <meta name="twitter:description" content="Get in touch with Polyplaces for commissions, questions, or anything else. We respond within 1â€“2 business days."/>
+  <meta name="twitter:title" content="Reviews &mdash; Polyplaces"/>
+  <meta name="twitter:description" content="What our customers say about their Polyplaces 3D map sculptures &mdash; and leave a review of your own."/>
   <meta name="twitter:image" content="https://polyplaces.co.uk/assets/imgs/74c45980-8acc-4220-b7b1-4b813a2ba1a1.webp"/>
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=1"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -55,8 +55,8 @@
     <ul class="nav-links" id="nav-links">
       <li><a href="/#how">How it works</a></li>
       <li><a href="/#products">Sculptures</a></li>
-      <li><a href="/reviews/">Reviews</a></li>
-      <li><a href="/contact/" aria-current="page">Contact</a></li>
+      <li><a href="/reviews/" aria-current="page">Reviews</a></li>
+      <li><a href="/contact/">Contact</a></li>
       <li><a href="/etsy/">Etsy</a></li>
       <li><a href="/store/" class="nav-cta btn">Customise yours &rarr;</a></li>
       <li><button type="button" class="nav-cart" id="cart-toggle" aria-label="Open cart" aria-expanded="false" aria-controls="cart-drawer">Cart <span id="cart-count">0</span></button></li>
@@ -70,48 +70,95 @@
 </div>
 
 <main id="main" style="padding-top:60px">
-  <div class="container" style="padding-top:64px;padding-bottom:80px;max-width:600px">
-    <div class="section-label">Get in touch</div>
-    <h1 class="section-h" style="margin-bottom:12px">Contact <em>us</em></h1>
-    <p style="color:#524a41;font-size:15px;line-height:1.7">We&rsquo;ll get back to you within 1&ndash;2 business days.</p>
+  <div class="container" style="padding-top:64px;padding-bottom:80px">
 
-    <form class="site-form" id="contact-form" novalidate>
-      <div class="form-field">
-        <label for="name">Name</label>
-        <input type="text" id="name" name="name" autocomplete="name" required placeholder="Your name"/>
-      </div>
-      <div class="form-field">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" autocomplete="email" required placeholder="you@example.com"/>
-      </div>
-      <div class="form-field">
-        <label for="subject">Subject</label>
-        <select id="subject" name="subject">
-          <option value="general">General enquiry</option>
-          <option value="commission">Commission / bespoke order</option>
-          <option value="order">Existing order</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div class="form-field">
-        <label for="message">Message</label>
-        <textarea id="message" name="message" required placeholder="How can we help?"></textarea>
-      </div>
+    <div class="section-label">Customer reviews</div>
+    <h1 class="section-h" style="margin-bottom:12px">People love their <em>places</em></h1>
+    <p style="color:#524a41;font-size:15px;line-height:1.7;max-width:560px">
+      Every sculpture is made to order for one person and one place. Here&rsquo;s what
+      they thought when it arrived.
+    </p>
+    <div class="reviews-summary" id="reviews-summary" aria-live="polite"></div>
 
-      <!-- Honeypot. Real people never see this; bots fill it in. -->
-      <div class="hp" aria-hidden="true">
-        <label for="company">Company</label>
-        <input type="text" id="company" name="company" tabindex="-1" autocomplete="off"/>
-      </div>
+    <div class="reviews-grid" id="reviews-list" aria-busy="true">
+      <!-- Populated by reviews.js. Skeletons render first. -->
+    </div>
 
-      <div class="turnstile-field" data-turnstile="contact"></div>
+    <div class="reviews-more" id="reviews-more" hidden>
+      <button type="button" class="btn" id="reviews-more-btn">Load more reviews</button>
+    </div>
 
-      <div class="form-submit">
-        <button type="submit" class="btn btn-fill" id="submit-btn">Send message &rarr;</button>
-      </div>
-    </form>
+    <!-- SUBMIT -->
+    <div class="review-form-wrap" style="max-width:600px">
+      <div class="section-label">Leave a review</div>
+      <h2 class="section-h" style="margin-bottom:12px">Tell us about <em>yours</em></h2>
+      <p style="color:#524a41;font-size:15px;line-height:1.7">
+        Reviews are read before they go live, so yours won&rsquo;t appear straight away.
+        Your email is only used to check the review is genuine &mdash; it is never published.
+      </p>
 
-    <div class="form-status" id="form-status" role="alert"></div>
+      <form class="site-form" id="review-form" novalidate>
+        <div class="review-form-grid">
+          <div class="form-field">
+            <label for="rv-name">Name</label>
+            <input type="text" id="rv-name" name="name" autocomplete="name" maxlength="80" required placeholder="Tom H."/>
+          </div>
+          <div class="form-field">
+            <label for="rv-location">Location <span style="text-transform:none;letter-spacing:0">(optional)</span></label>
+            <input type="text" id="rv-location" name="location" maxlength="80" placeholder="London, UK"/>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label id="rating-label">Rating</label>
+          <!-- Reversed order so the CSS sibling selector can fill stars to the left. -->
+          <div class="rating-input" role="radiogroup" aria-labelledby="rating-label">
+            <input type="radio" id="rv-rating-5" name="rating" value="5" required/><label for="rv-rating-5" title="5 stars" aria-label="5 stars">&#9733;</label>
+            <input type="radio" id="rv-rating-4" name="rating" value="4"/><label for="rv-rating-4" title="4 stars" aria-label="4 stars">&#9733;</label>
+            <input type="radio" id="rv-rating-3" name="rating" value="3"/><label for="rv-rating-3" title="3 stars" aria-label="3 stars">&#9733;</label>
+            <input type="radio" id="rv-rating-2" name="rating" value="2"/><label for="rv-rating-2" title="2 stars" aria-label="2 stars">&#9733;</label>
+            <input type="radio" id="rv-rating-1" name="rating" value="1"/><label for="rv-rating-1" title="1 star" aria-label="1 star">&#9733;</label>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="rv-title">Headline <span style="text-transform:none;letter-spacing:0">(optional)</span></label>
+          <input type="text" id="rv-title" name="title" maxlength="120" placeholder="Best gift I&rsquo;ve given"/>
+        </div>
+
+        <div class="form-field">
+          <label for="rv-body">Your review</label>
+          <textarea id="rv-body" name="body" maxlength="2000" required placeholder="What did you order, and what did you think when it arrived?"></textarea>
+          <div class="form-hint">At least 20 characters. Please don&rsquo;t include links.</div>
+        </div>
+
+        <div class="review-form-grid">
+          <div class="form-field">
+            <label for="rv-email">Email</label>
+            <input type="email" id="rv-email" name="email" autocomplete="email" maxlength="254" required placeholder="you@example.com"/>
+          </div>
+          <div class="form-field">
+            <label for="rv-order">Order reference <span style="text-transform:none;letter-spacing:0">(optional)</span></label>
+            <input type="text" id="rv-order" name="orderRef" maxlength="64" placeholder="From your confirmation email"/>
+          </div>
+        </div>
+
+        <!-- Honeypot. Real people never see this; bots fill it in. -->
+        <div class="hp" aria-hidden="true">
+          <label for="rv-company">Company</label>
+          <input type="text" id="rv-company" name="company" tabindex="-1" autocomplete="off"/>
+        </div>
+
+        <div class="turnstile-field" data-turnstile="review"></div>
+
+        <div class="form-submit">
+          <button type="submit" class="btn btn-fill" id="submit-btn">Submit review &rarr;</button>
+        </div>
+      </form>
+
+      <div class="form-status" id="form-status" role="alert"></div>
+    </div>
+
   </div>
 </main>
 
@@ -148,7 +195,7 @@
 <script defer src="/assets/js/analytics.js?v=ad0d4f07"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script defer src="../assets/js/turnstile.js?v=c986c175"></script>
-<script defer src="../assets/js/contact.js?v=b752ee0f"></script>
+<script defer src="../assets/js/reviews.js?v=6c1661d8"></script>
 
 </body>
 </html>

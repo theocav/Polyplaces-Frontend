@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>Etsy Bounding Box Tool — Polyplaces</title>
+  <title>Etsy Bounding Box Tool â€” Polyplaces</title>
   <meta name="description" content="Internal tool: select an area and copy its bounding box for the Etsy store."/>
   <meta name="robots" content="noindex,nofollow"/>
   <meta name="referrer" content="strict-origin-when-cross-origin"/>
   <meta name="theme-color" content="#f7f4ef"/>
   <meta name="color-scheme" content="light"/>
   <link rel="canonical" href="https://polyplaces.co.uk/etsy/"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <meta name="api-base" content="https://api.polyplaces.co.uk"/>
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=1"/>
   <link rel="shortcut icon" href="/assets/favicon.png?v=1"/>
@@ -19,7 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <link rel="stylesheet" href="../assets/css/styles.css?v=1c3e1ffe"/>
+  <link rel="stylesheet" href="../assets/css/styles.css?v=28ff4bf1"/>
   <style>
     /* Etsy tool: two-column layout, no pricing, no right bar. */
     #etsyPage{padding-top:60px;min-height:100vh;}
@@ -51,7 +51,8 @@
     <ul class="nav-links" id="nav-links">
       <li><a href="/#how">How it works</a></li>
       <li><a href="/#products">Sculptures</a></li>
-      <li><a href="/#reviews">Reviews</a></li>
+      <li><a href="/reviews/">Reviews</a></li>
+      <li><a href="/contact/">Contact</a></li>
       <li><a href="/etsy/">Etsy</a></li>
       <li><a href="/store/" class="nav-cta btn">Customise yours &rarr;</a></li>
       <li><button type="button" class="nav-cart" id="cart-toggle" aria-label="Open cart" aria-expanded="false" aria-controls="cart-drawer">Cart <span id="cart-count">0</span></button></li>
@@ -120,7 +121,7 @@
                     Zoom
                   </label>
                   <input type="range" id="zoom-slider" min="0.7" max="1.3" step="0.1" value="1" class="frame-ctrl-range" aria-label="Frame zoom level"/>
-                  <span class="frame-ctrl-val" id="zoom-val">1.0×</span>
+                  <span class="frame-ctrl-val" id="zoom-val">1.0Ã—</span>
                 </div>
               </div>
             </div>
@@ -164,7 +165,7 @@
     <div class="footer-tagline">Bespoke 3D map sculptures, made to order in the UK. Every place. Every person.</div>
   </div>
   <div class="footer-col"><h4>Shop</h4><ul><li><a href="/store/">Design yours</a></li><li><a href="/etsy/">Etsy</a></li></ul></div>
-  <div class="footer-col"><h4>Company</h4><ul><li><a href="/about/">About</a></li><li><a href="/#how">How it works</a></li><li><a href="/#reviews">Reviews</a></li><li><a href="/contact/">Contact</a></li></ul></div>
+  <div class="footer-col"><h4>Company</h4><ul><li><a href="/about/">About</a></li><li><a href="/#how">How it works</a></li><li><a href="/reviews/">Reviews</a></li><li><a href="/contact/">Contact</a></li></ul></div>
   <div class="footer-col"><h4>Help</h4><ul><li><a href="/shipping/">Shipping &amp; returns</a></li><li><a href="/faq/">FAQ</a></li><li><a href="/care/">Care guide</a></li><li><a href="/privacy/">Privacy policy</a></li><li><a href="/terms/">Terms &amp; conditions</a></li></ul></div>
   <div class="footer-bottom"><span class="footer-copy">&copy; 2026 Polyplaces Ltd. All rights reserved.</span><span class="footer-copy">Geographic data: OpenStreetMap contributors</span></div>
 </footer>
@@ -172,8 +173,8 @@
 <script defer src="/assets/js/sentry.bundle.min.js"></script>
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script defer src="../assets/js/env.js?v=e02bc732"></script>
-<script defer src="../assets/js/app.js?v=a9c268a6"></script>
+<script defer src="../assets/js/env.js?v=e11bc1b2"></script>
+<script defer src="../assets/js/app.js?v=8d31d4e7"></script>
 <script defer src="../assets/js/analytics.js?v=ad0d4f07"></script>
 </body>
 </html>

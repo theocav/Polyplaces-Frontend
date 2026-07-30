@@ -1972,6 +1972,26 @@ function initFrameControls() {
 // ── End frame controls ─────────────────────────────────────────────────────────
 
 
+// Drawers are sized off --app-h. In-app browsers (Instagram, Facebook, TikTok)
+// overlay a bottom toolbar that 100vh does not account for, which pushed the
+// cart footer — and the checkout button — off screen. Browsers with dvh support
+// override this via @supports; this covers the rest.
+function initViewportHeight() {
+  const vv = window.visualViewport;
+  const apply = () => {
+    const h = vv ? vv.height : window.innerHeight;
+    if (h > 0) document.documentElement.style.setProperty('--app-h', `${Math.round(h)}px`);
+  };
+  apply();
+  if (vv) {
+    vv.addEventListener('resize', apply);
+  } else {
+    window.addEventListener('resize', apply);
+  }
+  window.addEventListener('orientationchange', () => setTimeout(apply, 250));
+}
+
+initViewportHeight();
 initCartUI();
 initNavUI();
 showCheckoutBanner();

@@ -11,6 +11,9 @@ const defaultEnv = {
   POLYPLACES_NOMINATIM_URL: 'https://nominatim.openstreetmap.org/search',
   POLYPLACES_SEARCH_COUNTRY_CODES: 'gb',
   POLYPLACES_SEARCH_VIEWBOX: '-8.7,60.9,1.9,49.8',
+  // Public by design — the Turnstile *secret* key lives in the API worker.
+  // Default is Cloudflare's always-passes test key so local dev works unconfigured.
+  POLYPLACES_TURNSTILE_SITE_KEY: '1x00000000000000000000AA',
 };
 
 function parseEnvFile(contents) {
