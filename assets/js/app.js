@@ -2098,7 +2098,7 @@ if (document.getElementById('landing')) {
       '<div class="nl-card">' +
         '<button type="button" class="nl-close" id="nl-close" aria-label="Close">&times;</button>' +
         '<div class="nl-media">' +
-          '<img src="/assets/imgs/newsletter-studio.webp" width="1000" height="1333" decoding="async" ' +
+          '<img src="/assets/imgs/newsletter-studio.webp" width="1000" height="1242" decoding="async" ' +
           'alt="A Polyplaces sculpture being finished by hand at the studio bench">' +
         '</div>' +
         '<div class="nl-body">' +

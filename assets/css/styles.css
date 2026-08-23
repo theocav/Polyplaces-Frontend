@@ -776,7 +776,7 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 .nl-media{background:var(--bg-warm)}
 .nl-media img{
   width:100%;height:100%;
-  object-fit:cover;object-position:58% 62%;
+  object-fit:cover;object-position:50% 58%;
   display:block;
 }
 .nl-body{padding:34px 32px 28px;text-align:left}
@@ -829,7 +829,7 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
   .nl-overlay{align-items:flex-end;padding:12px}
   .nl-card{grid-template-columns:1fr;max-width:460px}
   .nl-media{height:150px}
-  .nl-media img{object-position:58% 60%}
+  .nl-media img{object-position:50% 62%}
   .nl-body{padding:24px 20px 20px}
   .nl-title{font-size:23px}
 }
