@@ -2113,7 +2113,7 @@ if (document.getElementById('landing')) {
             '<button type="submit" class="nl-submit" id="nl-submit">Get my 10% off</button>' +
           '</form>' +
           '<p class="nl-status" id="nl-status" role="status"></p>' +
-          '<button type="button" class="nl-decline" id="nl-decline">No thanks, take me back</button>' +
+          '<button type="button" class="nl-decline" id="nl-decline">No thanks</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
