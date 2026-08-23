@@ -2062,9 +2062,11 @@ if (document.getElementById('landing')) {
     catch (e) { /* private mode — the popup simply reappears next visit */ }
   };
 
+  // Any prior showing counts, dismissed or merely ignored — otherwise a
+  // refresh or a click through to another page just restarts the timer.
   const saved = readState();
   if (saved && saved.state === 'subscribed') return;
-  if (saved && saved.state === 'dismissed' && Date.now() - saved.at < SNOOZE_MS) return;
+  if (saved && Date.now() - saved.at < SNOOZE_MS) return;
 
   let shown = false;
   let overlay = null;
@@ -2087,6 +2089,8 @@ if (document.getElementById('landing')) {
   function open() {
     if (shown || document.body.classList.contains('cart-open')) return;
     shown = true;
+    // Stamped on open, so ignoring the popup snoozes it just like dismissing.
+    writeState('seen');
     lastFocused = document.activeElement;
 
     overlay = document.createElement('div');
