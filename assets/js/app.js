@@ -2039,14 +2039,14 @@ if (document.getElementById('landing')) {
 
 // ── Newsletter popup ───────────────────────────────────────────────────────────
 // Offers 10% off in exchange for an email. Held back until the cookie banner is
-// out of the way, and suppressed for 2 days after a dismissal (same courtesy
-// rule as the cookie banner) or for good once the visitor has subscribed.
+// out of the way, and suppressed for 7 days once it has been shown, whether
+// the visitor dismissed it or ignored it — or for good once they subscribe.
 (function () {
   // MOCK: no /api/newsletter endpoint exists yet. Set this to the path once the
   // backend is live and submit will POST for real instead of faking success.
   const NEWSLETTER_ENDPOINT = null; // e.g. '/api/newsletter'
   const STORE_KEY = 'pp_nl';
-  const SNOOZE_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
+  const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
   const DELAY_MS = 12000;
   const SCROLL_TRIGGER = 0.55; // fraction of the page scrolled
 
