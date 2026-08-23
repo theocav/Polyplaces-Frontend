@@ -2047,7 +2047,6 @@ if (document.getElementById('landing')) {
   const NEWSLETTER_ENDPOINT = null; // e.g. '/api/newsletter'
   const STORE_KEY = 'pp_nl';
   const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-  const DELAY_MS = 12000;
   const SCROLL_TRIGGER = 0.55; // fraction of the page scrolled
 
   // Not on the Etsy tool page — that is a bare utility, not a storefront.
@@ -2193,17 +2192,25 @@ if (document.getElementById('landing')) {
     });
   }
 
+  // Two intent-led triggers, no timer: the visitor has either read a good part
+  // of the page, or is on their way out. Neither interrupts what they came for.
   function arm() {
-    const timer = setTimeout(open, DELAY_MS);
     const onScroll = () => {
       const max = document.documentElement.scrollHeight - window.innerHeight;
-      if (max > 0 && window.scrollY / max > SCROLL_TRIGGER) {
-        clearTimeout(timer);
-        window.removeEventListener('scroll', onScroll);
-        open();
-      }
+      if (max > 0 && window.scrollY / max > SCROLL_TRIGGER) fire();
+    };
+    // Exit intent: pointer leaving through the top of the window, towards the
+    // tabs or address bar. Desktop only — touch devices have no equivalent.
+    const onExit = (e) => {
+      if (e.clientY <= 0 && !window.matchMedia('(hover: none)').matches) fire();
+    };
+    const fire = () => {
+      window.removeEventListener('scroll', onScroll);
+      document.removeEventListener('mouseout', onExit);
+      open();
     };
     window.addEventListener('scroll', onScroll, { passive: true });
+    document.addEventListener('mouseout', onExit);
   }
 
   // Wait for the cookie banner to be answered so the two never stack.
