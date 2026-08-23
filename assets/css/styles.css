@@ -810,12 +810,12 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 .nl-status:empty{margin:0}
 .nl-status-error{color:var(--accent)}
 .nl-decline{
-  margin-top:14px;padding:4px 0;
-  background:none;border:none;
-  font-family:var(--sans);font-size:13px;color:var(--light);
-  text-decoration:underline;cursor:pointer;
+  width:100%;margin-top:10px;padding:13px 20px;border-radius:8px;
+  font-family:var(--sans);font-size:14px;font-weight:500;
+  background:transparent;color:var(--mid);border:1px solid var(--border);
+  cursor:pointer;transition:border-color 0.2s,color 0.2s;
 }
-.nl-decline:hover{color:var(--ink)}
+.nl-decline:hover{border-color:var(--ink);color:var(--ink)}
 .nl-close{
   position:absolute;top:10px;right:12px;z-index:2;
   width:36px;height:36px;border-radius:50%;
