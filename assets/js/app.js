@@ -2027,12 +2027,186 @@ if (document.getElementById('landing')) {
     localStorage.setItem('pp_cn', val);
     overlay.remove();
     document.body.style.overflow = '';
+    // The newsletter popup waits on this so the two never stack.
+    document.dispatchEvent(new CustomEvent('pp:consent'));
   };
   document.getElementById('cookie-accept').onclick = () => {
     dismiss('1');
     if (typeof window.ppLoadGA === 'function') window.ppLoadGA();
   };
   document.getElementById('cookie-reject').onclick = () => dismiss('0');
+}());
+
+// ── Newsletter popup ───────────────────────────────────────────────────────────
+// Offers 10% off in exchange for an email. Held back until the cookie banner is
+// out of the way, and suppressed for 2 days after a dismissal (same courtesy
+// rule as the cookie banner) or for good once the visitor has subscribed.
+(function () {
+  // MOCK: no /api/newsletter endpoint exists yet. Set this to the path once the
+  // backend is live and submit will POST for real instead of faking success.
+  const NEWSLETTER_ENDPOINT = null; // e.g. '/api/newsletter'
+  const DISCOUNT_CODE = 'WELCOME10';
+  const STORE_KEY = 'pp_nl';
+  const SNOOZE_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
+  const DELAY_MS = 12000;
+  const SCROLL_TRIGGER = 0.55; // fraction of the page scrolled
+
+  // Not on the Etsy tool page — that is a bare utility, not a storefront.
+  if (/^\/etsy\//.test(location.pathname)) return;
+
+  const readState = () => {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || null; }
+    catch (e) { return null; }
+  };
+  const writeState = (state) => {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ state, at: Date.now() })); }
+    catch (e) { /* private mode — the popup simply reappears next visit */ }
+  };
+
+  const saved = readState();
+  if (saved && saved.state === 'subscribed') return;
+  if (saved && saved.state === 'dismissed' && Date.now() - saved.at < SNOOZE_MS) return;
+
+  let shown = false;
+  let overlay = null;
+  let lastFocused = null;
+
+  function close(reason) {
+    if (!overlay) return;
+    writeState(reason);
+    overlay.remove();
+    overlay = null;
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', onKeydown);
+    if (lastFocused && lastFocused.focus) lastFocused.focus();
+  }
+
+  function onKeydown(e) {
+    if (e.key === 'Escape') close('dismissed');
+  }
+
+  function open() {
+    if (shown || document.body.classList.contains('cart-open')) return;
+    shown = true;
+    lastFocused = document.activeElement;
+
+    overlay = document.createElement('div');
+    overlay.className = 'nl-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'nl-title');
+    overlay.innerHTML =
+      '<div class="nl-card">' +
+        '<button type="button" class="nl-close" id="nl-close" aria-label="Close">&times;</button>' +
+        '<div class="nl-media">' +
+          '<img src="/assets/imgs/newsletter-studio.webp" width="1000" height="1333" decoding="async" ' +
+          'alt="A Polyplaces sculpture being finished by hand at the studio bench">' +
+        '</div>' +
+        '<div class="nl-body">' +
+          '<p class="nl-eyebrow">10% off your first piece</p>' +
+          '<h2 class="nl-title" id="nl-title">Your place, in relief</h2>' +
+          '<p class="nl-text">Leave your email and we&rsquo;ll send a 10% discount code, plus the ' +
+          'occasional note from the studio. No spam, unsubscribe any time.</p>' +
+          '<form class="nl-form" id="nl-form" novalidate>' +
+            '<label class="sr-only" for="nl-email">Email address</label>' +
+            '<input type="email" id="nl-email" name="email" placeholder="you@example.com" autocomplete="email" required>' +
+            '<input type="text" id="nl-company" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="nl-hp">' +
+            '<button type="submit" class="nl-submit" id="nl-submit">Get my 10% off</button>' +
+          '</form>' +
+          '<p class="nl-status" id="nl-status" role="status"></p>' +
+          '<button type="button" class="nl-decline" id="nl-decline">No thanks</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKeydown);
+
+    const RENDERED_AT = Date.now();
+    const form   = overlay.querySelector('#nl-form');
+    const email  = overlay.querySelector('#nl-email');
+    const btn    = overlay.querySelector('#nl-submit');
+    const status = overlay.querySelector('#nl-status');
+
+    overlay.querySelector('#nl-close').onclick = () => close('dismissed');
+    overlay.querySelector('#nl-decline').onclick = () => close('dismissed');
+    overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close('dismissed'); });
+    setTimeout(() => email.focus(), 60);
+
+    if (typeof window.ppTrackGA === 'function') window.ppTrackGA('newsletter_shown');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const value = email.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        status.textContent = 'Please enter a valid email address.';
+        status.className = 'nl-status nl-status-error';
+        email.focus();
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+      status.textContent = '';
+      status.className = 'nl-status';
+
+      const payload = {
+        email: value,
+        renderedAt: RENDERED_AT,
+        company: overlay.querySelector('#nl-company').value.trim(),
+        source: location.pathname
+      };
+
+      const API_BASE = (
+        (window.__POLYPLACES_ENV__ && window.__POLYPLACES_ENV__.POLYPLACES_API_BASE_URL) ||
+        'https://api.polyplaces.co.uk'
+      ).replace(/\/$/, '');
+
+      const request = NEWSLETTER_ENDPOINT
+        ? fetch(API_BASE + NEWSLETTER_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }).then((res) => { if (!res.ok) throw new Error('server'); })
+        : new Promise((resolve) => setTimeout(resolve, 500)); // MOCK
+
+      request.then(() => {
+        if (typeof window.ppTrackGA === 'function') window.ppTrackGA('newsletter_signup');
+        if (typeof fbq === 'function') fbq('track', 'Lead', { content_name: 'Newsletter' });
+        writeState('subscribed');
+        overlay.querySelector('.nl-body').innerHTML =
+          '<p class="nl-eyebrow">You&rsquo;re in</p>' +
+          '<h2 class="nl-title">Here&rsquo;s your code</h2>' +
+          '<p class="nl-code">' + DISCOUNT_CODE + '</p>' +
+          '<p class="nl-text">10% off your first order — we&rsquo;ve emailed it to you as well. ' +
+          'Enter it at checkout.</p>' +
+          '<button type="button" class="nl-submit" id="nl-done">Start browsing</button>';
+        overlay.querySelector('#nl-done').onclick = () => close('subscribed');
+        overlay.querySelector('#nl-done').focus();
+      }).catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Get my 10% off';
+        status.textContent = 'Something went wrong — please try again shortly.';
+        status.className = 'nl-status nl-status-error';
+      });
+    });
+  }
+
+  function arm() {
+    const timer = setTimeout(open, DELAY_MS);
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      if (max > 0 && window.scrollY / max > SCROLL_TRIGGER) {
+        clearTimeout(timer);
+        window.removeEventListener('scroll', onScroll);
+        open();
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  // Wait for the cookie banner to be answered so the two never stack.
+  if (localStorage.getItem('pp_cn')) arm();
+  else document.addEventListener('pp:consent', arm, { once: true });
 }());
 
 if (document.getElementById('storePage')) {

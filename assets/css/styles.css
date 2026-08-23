@@ -750,6 +750,100 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 }
 
 /* ===================================================================
+   NEWSLETTER POPUP
+   =================================================================== */
+.nl-overlay{
+  position:fixed;inset:0;z-index:100001;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+  background:rgba(26,23,20,0.55);
+  backdrop-filter:blur(3px);
+  animation:nl-fade 0.25s ease;
+}
+@keyframes nl-fade{from{opacity:0}to{opacity:1}}
+.nl-card{
+  position:relative;
+  width:100%;max-width:720px;
+  display:grid;grid-template-columns:0.85fr 1fr;
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 24px 60px var(--shadow);
+  animation:nl-rise 0.3s ease;
+}
+@keyframes nl-rise{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
+.nl-media{background:var(--bg-warm)}
+.nl-media img{
+  width:100%;height:100%;
+  object-fit:cover;object-position:58% 62%;
+  display:block;
+}
+.nl-body{padding:34px 32px 28px;text-align:left}
+.nl-eyebrow{
+  font-size:11px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:10px;
+}
+.nl-title{
+  font-family:var(--serif);font-size:27px;font-weight:400;line-height:1.15;
+  color:var(--ink);margin-bottom:12px;
+}
+.nl-text{font-size:14px;line-height:1.65;color:var(--mid);margin-bottom:18px}
+.nl-form{display:flex;flex-direction:column;gap:10px}
+.nl-form input[type="email"]{
+  width:100%;padding:13px 14px;
+  font-family:var(--sans);font-size:15px;color:var(--ink);
+  background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  transition:border-color 0.2s;
+}
+.nl-form input[type="email"]:focus{outline:none;border-color:var(--accent)}
+.nl-hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.nl-submit{
+  width:100%;padding:13px 20px;border-radius:8px;
+  font-family:var(--sans);font-size:14px;font-weight:500;
+  background:var(--ink);color:var(--white);border:1px solid var(--ink);
+  cursor:pointer;transition:background 0.2s,border-color 0.2s;
+}
+.nl-submit:hover:not(:disabled){background:var(--accent);border-color:var(--accent)}
+.nl-submit:disabled{opacity:0.6;cursor:default}
+.nl-status{font-size:13px;line-height:1.5;color:var(--mid);margin-top:10px}
+.nl-status:empty{margin:0}
+.nl-status-error{color:var(--accent)}
+.nl-decline{
+  margin-top:14px;padding:4px 0;
+  background:none;border:none;
+  font-family:var(--sans);font-size:13px;color:var(--light);
+  text-decoration:underline;cursor:pointer;
+}
+.nl-decline:hover{color:var(--ink)}
+.nl-code{
+  font-family:var(--serif);font-size:26px;letter-spacing:0.08em;
+  color:var(--ink);background:var(--accent-bg);
+  border:1px dashed var(--accent);border-radius:8px;
+  padding:14px;text-align:center;margin-bottom:14px;
+}
+.nl-close{
+  position:absolute;top:10px;right:12px;z-index:2;
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;line-height:1;color:var(--mid);
+  background:rgba(255,255,255,0.9);border:1px solid var(--border);
+  cursor:pointer;transition:color 0.2s,background 0.2s;
+}
+.nl-close:hover{color:var(--ink);background:var(--white)}
+@media (max-width:640px){
+  .nl-overlay{align-items:flex-end;padding:12px}
+  .nl-card{grid-template-columns:1fr;max-width:460px}
+  .nl-media{height:150px}
+  .nl-media img{object-position:58% 60%}
+  .nl-body{padding:24px 20px 20px}
+  .nl-title{font-size:23px}
+}
+@media (prefers-reduced-motion: reduce){
+  .nl-overlay,.nl-card{animation:none}
+}
+
+/* ===================================================================
    SITE FORMS
    Hoisted out of contact/index.html so /reviews/ shares one source.
    .contact-form is kept as an alias so existing markup keeps working.
