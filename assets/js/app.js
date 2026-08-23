@@ -2045,7 +2045,6 @@ if (document.getElementById('landing')) {
   // MOCK: no /api/newsletter endpoint exists yet. Set this to the path once the
   // backend is live and submit will POST for real instead of faking success.
   const NEWSLETTER_ENDPOINT = null; // e.g. '/api/newsletter'
-  const DISCOUNT_CODE = 'WELCOME10';
   const STORE_KEY = 'pp_nl';
   const SNOOZE_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
   const DELAY_MS = 12000;
@@ -2175,10 +2174,9 @@ if (document.getElementById('landing')) {
         writeState('subscribed');
         overlay.querySelector('.nl-body').innerHTML =
           '<p class="nl-eyebrow">You&rsquo;re in</p>' +
-          '<h2 class="nl-title">Here&rsquo;s your code</h2>' +
-          '<p class="nl-code">' + DISCOUNT_CODE + '</p>' +
-          '<p class="nl-text">10% off your first order — we&rsquo;ve emailed it to you as well. ' +
-          'Enter it at checkout.</p>' +
+          '<h2 class="nl-title">Check your inbox</h2>' +
+          '<p class="nl-text">Your 10% discount code is on its way to <strong>' + escapeHtml(value) + '</strong>. ' +
+          'It should land within a few minutes — have a look in spam if it doesn&rsquo;t.</p>' +
           '<button type="button" class="nl-submit" id="nl-done">Start browsing</button>';
         overlay.querySelector('#nl-done').onclick = () => close('subscribed');
         overlay.querySelector('#nl-done').focus();
