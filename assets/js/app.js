@@ -2103,8 +2103,8 @@ if (document.getElementById('landing')) {
         '</div>' +
         '<div class="nl-body">' +
           '<p class="nl-eyebrow">10% off your first piece</p>' +
-          '<h2 class="nl-title" id="nl-title">Your place, in relief</h2>' +
-          '<p class="nl-text">Leave your email and we&rsquo;ll send a 10% discount code, plus the ' +
+          '<h2 class="nl-title" id="nl-title">Hold the places you love</h2>' +
+          '<p class="nl-text">Leave your email and we&rsquo;ll send your discount code, plus the ' +
           'occasional note from the studio. No spam, unsubscribe any time.</p>' +
           '<form class="nl-form" id="nl-form" novalidate>' +
             '<label class="sr-only" for="nl-email">Email address</label>' +
