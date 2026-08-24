@@ -892,13 +892,27 @@ let frameZoom = 1.0;     // 0.7-1.3 geographic scale factor
 let frameCenter = null;  // { lat, lng } actual center of the frame
 let frameCorners = null; // [[lat,lng]×4] rotated corners currently drawn
 
+// A homepage gallery piece links here with the place it shows attached, so the
+// map opens on that location rather than the default view. Anything outside the
+// UK bounds or unparseable is ignored and the default stands.
+function readMapStart(ukBounds) {
+  const params = new URLSearchParams(window.location.search);
+  const lat = parseFloat(params.get('lat'));
+  const lng = parseFloat(params.get('lng'));
+  const z   = parseInt(params.get('z'), 10);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (!ukBounds.contains([lat, lng])) return null;
+  return { centre: [lat, lng], zoom: Number.isFinite(z) ? Math.min(Math.max(z, 12), 19) : 15 };
+}
+
 function initMap() {
   const ukBounds = L.latLngBounds([49.8, -8.7], [60.9, 1.9]);
+  const start = readMapStart(ukBounds);
   map = L.map('store-map', {
     zoomControl: false,
     maxBounds: ukBounds,
     maxBoundsViscosity: 1.0,
-  }).setView([51.505, -0.09], 14);
+  }).setView(start ? start.centre : [51.505, -0.09], start ? start.zoom : 14);
   L.control.zoom({ position: 'topleft' }).addTo(map);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -1712,6 +1726,48 @@ async function loadHomepagePrices() {
   }
 }
 
+// Homepage gallery — one featured piece with a thumbnail strip. Each thumb
+// carries the place it shows, so "Make this place yours" opens the store map
+// on that location at the size the piece was made in.
+function initGallery() {
+  const gallery = document.getElementById('gallery');
+  if (!gallery) return;
+
+  const photo   = document.getElementById('gallery-photo');
+  const place   = document.getElementById('gallery-place');
+  const note    = document.getElementById('gallery-note');
+  const eyebrow = document.getElementById('gallery-eyebrow');
+  const cta     = document.getElementById('gallery-cta');
+  const thumbs  = Array.from(gallery.querySelectorAll('.gallery-thumb'));
+
+  const show = (thumb) => {
+    const d = thumb.dataset;
+    photo.src = d.photo;
+    photo.alt = d.alt;
+    place.textContent   = d.place;
+    note.innerHTML      = d.note;
+    eyebrow.innerHTML   = d.eyebrow;
+    cta.href = `/store/?scale=${encodeURIComponent(d.scale)}&lat=${encodeURIComponent(d.lat)}&lng=${encodeURIComponent(d.lng)}&z=${encodeURIComponent(d.z)}`;
+    cta.setAttribute('aria-label', `Make ${d.place} yours`);
+    thumbs.forEach((t) => {
+      t.setAttribute('aria-selected', String(t === thumb));
+      t.classList.toggle('is-active', t === thumb);
+    });
+  };
+
+  thumbs.forEach((thumb, i) => {
+    thumb.addEventListener('click', () => show(thumb));
+    // Left/right arrows move along the strip, as a tablist should.
+    thumb.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const next = thumbs[(i + (e.key === 'ArrowRight' ? 1 : thumbs.length - 1)) % thumbs.length];
+      next.focus();
+      show(next);
+    });
+  });
+}
+
 function initNavUI() {
   const toggle = document.getElementById('nav-toggle');
   const drawer = document.getElementById('nav-drawer');
@@ -1997,6 +2053,7 @@ initNavUI();
 showCheckoutBanner();
 if (document.getElementById('landing')) {
   loadHomepagePrices();
+  initGallery();
 }
 
 // Cookie consent — injected on every page so consent can be captured

@@ -50,7 +50,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <link rel="stylesheet" href="./assets/css/styles.css?v=c05c484c"/>
+  <link rel="stylesheet" href="./assets/css/styles.css?v=55180259"/>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -184,81 +184,93 @@
   <div class="container">
     <div class="prod-header reveal">
       <div>
-        <div class="section-label">Shop sizes</div>
-        <h2 class="section-h">Pick your <em>scale</em></h2>
+        <div class="section-label">Gallery</div>
+        <h2 class="section-h">Places we have <em>made</em></h2>
       </div>
-      <div class="prod-header-right">Need a different size? <a href="#custom-band">Talk to us</a></div>
+      <div class="prod-header-right">Somewhere else in mind? <a href="/store/">Design yours</a></div>
     </div>
 
-    <div class="product-grid">
-      <a class="prod-card reveal d1" href="/store/?scale=small">
-        <div class="prod-img">
-          <div class="prod-img-inner prod-img-inner-photo">
-            <img class="prod-img-photo" src="./assets/imgs/Small%20frame.webp" alt="Small framed 3D map sculpture" loading="lazy"/>
-          </div>
+    <!-- PLACEHOLDER CONTENT: photos are the existing product shots and the place
+         names below are stand-ins. Swap each thumb's data-* attributes and image
+         for a real finished piece — data-lat/lng/z set where the store map opens. -->
+    <div class="gallery reveal" id="gallery">
+      <div class="gallery-feature">
+        <div class="gallery-stage">
+          <img id="gallery-photo" src="./assets/imgs/A4%20frame.webp" alt="A4 framed 3D map sculpture of Whitby harbour" width="1000" height="750"/>
         </div>
-        <div class="prod-info">
-          <div class="prod-size-tag">20cm &times; 20cm</div>
-          <div class="prod-name">Small</div>
-          <div class="prod-desc">A compact sculpture in perfect relief. Ideal for where you live, work, or grew up. Ships as a 20&times;20cm matte white sculpture.</div>
-          <div class="prod-footer">
-            <span class="prod-price-tag" id="prod-price-small" hidden></span>
-            <span class="prod-btn">Customise &rarr;</span>
-          </div>
+        <div class="gallery-info">
+          <div class="gallery-eyebrow" id="gallery-eyebrow">A4 &middot; 29 &times; 21cm</div>
+          <h3 class="gallery-place" id="gallery-place">Whitby harbour</h3>
+          <p class="gallery-note" id="gallery-note">The harbour wall, the abbey steps, and the cliffs rising behind the town.</p>
+          <a class="btn btn-fill" id="gallery-cta" href="/store/?scale=a4&amp;lat=54.4863&amp;lng=-0.6133&amp;z=15">Make this place yours</a>
         </div>
-      </a>
+      </div>
 
-      <a class="prod-card reveal d1" href="/store/?scale=a4">
-        <div class="prod-img">
-          <div class="prod-badge prod-badge-ink">Gift pick</div>
-          <div class="prod-img-inner prod-img-inner-photo">
-            <img class="prod-img-photo" src="./assets/imgs/A4%20frame.webp" alt="A4 framed 3D map sculpture" loading="lazy"/>
-          </div>
-        </div>
-        <div class="prod-info">
-          <div class="prod-size-tag">A4 size</div>
-          <div class="prod-name">A4</div>
-          <div class="prod-desc">A4 portrait format &mdash; frames beautifully on a wall. A thoughtful gift for someone who cherishes a particular place.</div>
-          <div class="prod-footer">
-            <span class="prod-price-tag" id="prod-price-medium" hidden></span>
-            <span class="prod-btn">Customise &rarr;</span>
-          </div>
-        </div>
-      </a>
+      <div class="gallery-thumbs" role="tablist" aria-label="Gallery pieces">
+        <button type="button" class="gallery-thumb is-active" role="tab" aria-selected="true"
+          data-place="Whitby harbour"
+          data-eyebrow="A4 &middot; 29 &times; 21cm"
+          data-note="The harbour wall, the abbey steps, and the cliffs rising behind the town."
+          data-photo="./assets/imgs/A4%20frame.webp"
+          data-alt="A4 framed 3D map sculpture of Whitby harbour"
+          data-scale="a4" data-lat="54.4863" data-lng="-0.6133" data-z="15">
+          <img src="./assets/imgs/A4%20frame.webp" alt="" loading="lazy"/>
+        </button>
+        <button type="button" class="gallery-thumb" role="tab" aria-selected="false"
+          data-place="Primrose Hill"
+          data-eyebrow="Small &middot; 20 &times; 20cm"
+          data-note="Terraces, the park edge, and the slope that looks back over London."
+          data-photo="./assets/imgs/Small%20frame.webp"
+          data-alt="Small framed 3D map sculpture of Primrose Hill, London"
+          data-scale="small" data-lat="51.5386" data-lng="-0.1608" data-z="16">
+          <img src="./assets/imgs/Small%20frame.webp" alt="" loading="lazy"/>
+        </button>
+        <button type="button" class="gallery-thumb" role="tab" aria-selected="false"
+          data-place="Wastwater"
+          data-eyebrow="Large &middot; 40 &times; 40cm"
+          data-note="England&rsquo;s deepest lake, with the screes falling straight into it."
+          data-photo="./assets/imgs/Large%20frame.webp"
+          data-alt="Large framed 3D map sculpture of Wastwater in the Lake District"
+          data-scale="large" data-lat="54.4436" data-lng="-3.2996" data-z="13">
+          <img src="./assets/imgs/Large%20frame.webp" alt="" loading="lazy"/>
+        </button>
+        <button type="button" class="gallery-thumb" role="tab" aria-selected="false"
+          data-place="Yr Wyddfa / Snowdon"
+          data-eyebrow="Custom &middot; any size"
+          data-note="Ridge lines, cwms, and the path they walked, at a scale of their choosing."
+          data-photo="./assets/imgs/custom.webp"
+          data-alt="Custom sized 3D map sculpture of Yr Wyddfa, Snowdon"
+          data-scale="custom" data-lat="53.0685" data-lng="-4.0763" data-z="13">
+          <img src="./assets/imgs/custom.webp" alt="" loading="lazy"/>
+        </button>
+      </div>
+    </div>
 
-      <a class="prod-card reveal d2" href="/store/?scale=large">
-        <div class="prod-img">
-          <div class="prod-img-inner prod-img-inner-photo">
-            <img class="prod-img-photo" src="./assets/imgs/Large%20frame.webp" alt="Large framed 3D map sculpture" loading="lazy"/>
-          </div>
-        </div>
-        <div class="prod-info">
-          <div class="prod-size-tag">32cm &times; 32cm</div>
-          <div class="prod-name">Large</div>
-          <div class="prod-desc">Our largest standard size. Capture valleys, coastlines, and big landscapes in extraordinary topographic detail.</div>
-          <div class="prod-footer">
-            <span class="prod-price-tag" id="prod-price-large" hidden></span>
-            <span class="prod-btn">Customise &rarr;</span>
-          </div>
-        </div>
+    <div class="size-strip reveal">
+      <a class="size-row" href="/store/?scale=small">
+        <span class="size-row-name">Small</span>
+        <span class="size-row-dim">20 &times; 20cm</span>
+        <span class="size-row-price" id="prod-price-small" hidden></span>
+        <span class="size-row-go">Customise &rarr;</span>
       </a>
-
-      <a class="prod-card featured reveal" href="/store/">
-        <div class="prod-img">
-          <div class="prod-img-inner prod-img-inner-photo">
-            <img class="prod-img-photo" src="./assets/imgs/custom.webp" alt="Custom 3D map sculpture size" loading="lazy"/>
-          </div>
-        </div>
-        <div class="prod-info">
-          <div class="prod-size-tag">Any size</div>
-          <div class="prod-name">Custom</div>
-          <div class="prod-desc">Choose your own dimensions and generate a one-of-a-kind scale for your exact location.</div>
-          <div class="prod-footer">
-            <span class="prod-btn">Customise &rarr;</span>
-          </div>
-        </div>
+      <a class="size-row" href="/store/?scale=a4">
+        <span class="size-row-name">A4 <span class="size-row-badge">Gift pick</span></span>
+        <span class="size-row-dim">29 &times; 21cm</span>
+        <span class="size-row-price" id="prod-price-medium" hidden></span>
+        <span class="size-row-go">Customise &rarr;</span>
       </a>
-
+      <a class="size-row" href="/store/?scale=large">
+        <span class="size-row-name">Large</span>
+        <span class="size-row-dim">40 &times; 40cm</span>
+        <span class="size-row-price" id="prod-price-large" hidden></span>
+        <span class="size-row-go">Customise &rarr;</span>
+      </a>
+      <a class="size-row" href="/store/">
+        <span class="size-row-name">Custom</span>
+        <span class="size-row-dim">Your dimensions</span>
+        <span class="size-row-price"></span>
+        <span class="size-row-go">Customise &rarr;</span>
+      </a>
     </div>
   </div>
 </section>
@@ -341,7 +353,7 @@
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script defer src="./assets/js/env.js?v=367b7f48"></script>
-<script defer src="./assets/js/app.js?v=83373236"></script>
+<script defer src="./assets/js/app.js?v=1d66695f"></script>
 <script defer src="/assets/js/analytics.js?v=ad0d4f07"></script>
 <script defer src="./assets/js/reviews.js?v=6b5e294a"></script>
 
