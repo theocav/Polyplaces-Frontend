@@ -182,7 +182,7 @@ async function getProductData(onUpdate) {
 const productMeta = {
   small:  { artSize: '20\u00D720cm', badge: 'Most popular' },
   a4:     { artSize: '20\u00D728cm', badge: 'Best for gifting' },
-  large:  { artSize: '40\u00D740cm', badge: null },
+  large:  { artSize: '32\u00D732cm', badge: null },
 };
 
 // Frame add-on options keyed by frameKey (small, medium, large, etc.).
