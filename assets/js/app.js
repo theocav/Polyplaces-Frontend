@@ -1726,7 +1726,7 @@ async function loadHomepagePrices() {
   }
 }
 
-// Homepage gallery — one featured piece with a thumbnail strip. Each thumb
+// Homepage gallery - one featured piece with a thumbnail strip. Each thumb
 // carries the place it shows, so "Make this place yours" opens the store map
 // on that location at the size the piece was made in.
 function initGallery() {
@@ -2097,7 +2097,7 @@ if (document.getElementById('landing')) {
 // ── Newsletter popup ───────────────────────────────────────────────────────────
 // Offers 10% off in exchange for an email. Held back until the cookie banner is
 // out of the way, and suppressed for 7 days once it has been shown, whether
-// the visitor dismissed it or ignored it — or for good once they subscribe.
+// the visitor dismissed it or ignored it - or for good once they subscribe.
 (function () {
   // MOCK: no /api/newsletter endpoint exists yet. Set this to the path once the
   // backend is live and submit will POST for real instead of faking success.
@@ -2106,7 +2106,7 @@ if (document.getElementById('landing')) {
   const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
   const SCROLL_TRIGGER = 0.55; // fraction of the page scrolled
 
-  // Not on the Etsy tool page — that is a bare utility, not a storefront.
+  // Not on the Etsy tool page - that is a bare utility, not a storefront.
   if (/^\/etsy\//.test(location.pathname)) return;
 
   const readState = () => {
@@ -2115,10 +2115,10 @@ if (document.getElementById('landing')) {
   };
   const writeState = (state) => {
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ state, at: Date.now() })); }
-    catch (e) { /* private mode — the popup simply reappears next visit */ }
+    catch (e) { /* private mode - the popup simply reappears next visit */ }
   };
 
-  // Any prior showing counts, dismissed or merely ignored — otherwise a
+  // Any prior showing counts, dismissed or merely ignored - otherwise a
   // refresh or a click through to another page just restarts the timer.
   const saved = readState();
   if (saved && saved.state === 'subscribed') return;
@@ -2236,14 +2236,14 @@ if (document.getElementById('landing')) {
           '<p class="nl-eyebrow">You&rsquo;re in</p>' +
           '<h2 class="nl-title">Check your inbox</h2>' +
           '<p class="nl-text">Your 10% discount code is on its way to <strong>' + escapeHtml(value) + '</strong>. ' +
-          'It should land within a few minutes — have a look in spam if it doesn&rsquo;t.</p>' +
+          'It should land within a few minutes - have a look in spam if it doesn&rsquo;t.</p>' +
           '<button type="button" class="nl-submit" id="nl-done">Start browsing</button>';
         overlay.querySelector('#nl-done').onclick = () => close('subscribed');
         overlay.querySelector('#nl-done').focus();
       }).catch(() => {
         btn.disabled = false;
         btn.textContent = 'Get my 10% off';
-        status.textContent = 'Something went wrong — please try again shortly.';
+        status.textContent = 'Something went wrong - please try again shortly.';
         status.className = 'nl-status nl-status-error';
       });
     });
@@ -2257,7 +2257,7 @@ if (document.getElementById('landing')) {
       if (max > 0 && window.scrollY / max > SCROLL_TRIGGER) fire();
     };
     // Exit intent: pointer leaving through the top of the window, towards the
-    // tabs or address bar. Desktop only — touch devices have no equivalent.
+    // tabs or address bar. Desktop only - touch devices have no equivalent.
     const onExit = (e) => {
       if (e.clientY <= 0 && !window.matchMedia('(hover: none)').matches) fire();
     };
