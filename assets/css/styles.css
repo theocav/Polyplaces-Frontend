@@ -129,7 +129,7 @@ nav{
 .proof-item .num{font-family:var(--serif);font-size:28px;font-weight:300;color:#f5f0e8;}
 .proof-item .lbl{font-size:11px;color:rgba(245,240,232,0.5);letter-spacing:0.04em;margin-top:2px;}
 .proof-num-row{display:flex;align-items:baseline;gap:10px;}
-.proof-trend{font-size:13px;font-weight:500;color:#4ade80;white-space:nowrap;}
+.proof-trend{font-size:13px;font-weight:500;color:rgba(245,240,232,0.55);white-space:nowrap;}
 
 .hero-right{position:relative;overflow:hidden;background:linear-gradient(135deg,#2a2420 0%,#1a1714 100%);}
 .hero-image{
@@ -211,12 +211,10 @@ nav{
 .prod-btn:hover{background:var(--accent)}
 
 /* CUSTOM BAND */
-#custom-band{background:var(--accent);padding:64px 40px;display:flex;align-items:center;justify-content:space-between;gap:40px;}
-.custom-text .kicker{font-size:11px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.75);margin-bottom:8px}
-.custom-text h2{font-family:var(--serif);font-size:clamp(26px,3vw,40px);font-weight:300;color:white;letter-spacing:-0.02em}
-.custom-text p{font-size:14px;color:rgba(255,255,255,0.82);margin-top:8px;max-width:480px;line-height:1.7}
-.btn-white{display:inline-block;text-decoration:none;background:white;color:var(--accent);padding:14px 32px;font-size:13px;font-weight:500;border:none;cursor:pointer;border-radius:2px;white-space:nowrap;transition:all 0.2s}
-.btn-white:hover{background:var(--bg);transform:translateY(-1px)}
+#custom-band{background:var(--ink);padding:64px 40px;display:flex;align-items:center;justify-content:space-between;gap:40px;}
+.custom-text .kicker{font-size:11px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-lt);margin-bottom:8px}
+.custom-text h2{font-family:var(--serif);font-size:clamp(26px,3vw,40px);font-weight:300;color:#f5f0e8;letter-spacing:-0.02em}
+.custom-text p{font-size:14px;color:rgba(245,240,232,0.75);margin-top:8px;max-width:480px;line-height:1.7}
 
 /* REVIEWS */
 .hidden{display:none!important}
@@ -573,7 +571,7 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
   #custom-band{
     flex-direction:column;align-items:flex-start;padding:48px 20px;
   }
-  .btn,.btn-white,.nav-cart,.btn-order,.btn-order-sec,.cart-close{min-height:44px}
+  .btn,.nav-cart,.btn-order,.btn-order-sec,.cart-close{min-height:44px}
   .reviews-grid{margin-top:32px}
   footer{grid-template-columns:1fr}
   .footer-bottom{flex-direction:column;gap:8px}

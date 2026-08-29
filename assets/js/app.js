@@ -2170,6 +2170,7 @@ if (document.getElementById('landing')) {
             '<label class="sr-only" for="nl-email">Email address</label>' +
             '<input type="email" id="nl-email" name="email" placeholder="you@example.com" autocomplete="email" required>' +
             '<input type="text" id="nl-company" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="nl-hp">' +
+            '<div class="turnstile-field" data-turnstile="newsletter"></div>' +
             '<button type="submit" class="nl-submit" id="nl-submit">Get my 10% off</button>' +
           '</form>' +
           '<p class="nl-status" id="nl-status" role="status"></p>' +
@@ -2190,6 +2191,11 @@ if (document.getElementById('landing')) {
     overlay.querySelector('#nl-decline').onclick = () => close('dismissed');
     overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close('dismissed'); });
     setTimeout(() => email.focus(), 60);
+
+    // The modal is built on open, long after turnstile.js scanned the page.
+    if (typeof window.ppTurnstileRender === 'function') {
+      window.ppTurnstileRender(overlay.querySelector('[data-turnstile]'));
+    }
 
     if (typeof window.ppTrackGA === 'function') window.ppTrackGA('newsletter_shown');
 
@@ -2212,7 +2218,9 @@ if (document.getElementById('landing')) {
         email: value,
         renderedAt: RENDERED_AT,
         company: overlay.querySelector('#nl-company').value.trim(),
-        source: location.pathname
+        source: location.pathname,
+        turnstileToken: (typeof window.ppTurnstileToken === 'function')
+          ? window.ppTurnstileToken(form) : ''
       };
 
       const API_BASE = (
@@ -2245,6 +2253,8 @@ if (document.getElementById('landing')) {
         btn.textContent = 'Get my 10% off';
         status.textContent = 'Something went wrong - please try again shortly.';
         status.className = 'nl-status nl-status-error';
+        // Tokens are single-use, so a retry without this always fails.
+        if (typeof window.ppTurnstileReset === 'function') window.ppTurnstileReset(form);
       });
     });
   }
