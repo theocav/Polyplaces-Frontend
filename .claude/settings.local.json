@@ -6,7 +6,8 @@
       "Bash(curl -s http://localhost:3000/store/)",
       "Bash(grep -E \"\\\\.html$|/$\")",
       "WebFetch(domain:developers.cloudflare.com)",
-      "mcp__plugin_cloudflare_cloudflare-api__execute"
+      "mcp__plugin_cloudflare_cloudflare-api__execute",
+      "Bash(sed -n '278,340p' \"/c/Users/theoc/AppData/Roaming/OrcaSlicer/OrcaSlicer.conf\")"
     ]
   },
   "enabledPlugins": {

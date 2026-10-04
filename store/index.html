@@ -49,7 +49,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <link rel="stylesheet" href="../assets/css/styles.css?v=77d3b70d"/>
+  <link rel="stylesheet" href="../assets/css/styles.css?v=176a2060"/>
 </head>
 <body>
 
@@ -68,6 +68,7 @@
       <li><a href="/reviews/">Reviews</a></li>
       <li><a href="/contact/">Contact</a></li>
       <li><a href="/etsy/">Etsy</a></li>
+      <li><a href="/newsletter/">Newsletter</a></li>
       <li><a href="/store/" class="nav-cta btn">Customise yours &rarr;</a></li>
       <li><button type="button" class="nav-cart" id="cart-toggle" aria-label="Open cart" aria-expanded="false" aria-controls="cart-drawer">Cart <span id="cart-count">0</span></button></li>
     </ul>
@@ -141,27 +142,28 @@
           </div>
           <div class="map-toolbar-end">
             <div class="frame-controls" id="frame-controls" hidden>
-              <button type="button" id="rotation-btn" class="frame-rotate-btn" aria-pressed="false">
-                <svg class="frame-ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                Rotate
+              <button type="button" id="rotation-btn" class="frame-btn" aria-pressed="false" title="Rotate the frame 90°">
+                <svg class="frame-ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                <span>Rotate</span>
               </button>
-              <div class="frame-ctrl-vsep" id="frame-ctrl-divider"></div>
-              <div class="frame-ctrl">
-                <button type="button" id="zoom-toggle-btn" class="zoom-toggle-btn frame-rotate-btn" aria-expanded="false" aria-label="Toggle zoom control">
-                  <svg class="frame-ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/></svg>
-                  Zoom
-                </button>
-                <div class="zoom-slider-group">
-                  <label class="frame-ctrl-label" for="zoom-slider">
-                    <svg class="frame-ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/></svg>
-                    Zoom
-                  </label>
-                  <input type="range" id="zoom-slider" min="0.7" max="1.3" step="0.1" value="1" class="frame-ctrl-range" aria-label="Frame zoom level"/>
-                  <span class="frame-ctrl-val" id="zoom-val">1.0×</span>
-                </div>
+              <span class="frame-ctrl-vsep" aria-hidden="true"></span>
+              <div class="frame-zoom">
+                <label class="frame-zoom-label" for="zoom-slider">Zoom</label>
+                <input type="range" id="zoom-slider" min="0.7" max="1.3" step="0.1" value="1" class="frame-range" aria-label="Frame zoom level"/>
+                <output class="frame-zoom-val" id="zoom-val" for="zoom-slider">1.0&times;</output>
               </div>
+              <span class="frame-ctrl-vsep" aria-hidden="true"></span>
+              <button type="button" id="landscape-toggle-btn" class="landscape-switch" aria-pressed="false" title="Terrain only - buildings are not printed">
+                <svg class="frame-ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="6" r="2"/><path d="M2 20l6-9 4 5 3-4.5L22 20z"/></svg>
+                <span>Landscape</span>
+                <span class="landscape-switch-track" aria-hidden="true"><span class="landscape-switch-thumb"></span></span>
+              </button>
             </div>
           </div>
+        </div>
+        <div class="landscape-banner" id="landscape-banner" aria-hidden="true">
+          <svg class="landscape-banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="18" cy="6" r="2"/><path d="M2 20l6-9 4 5 3-4.5L22 20z"/></svg>
+          <span><strong>Landscape mode</strong> - terrain only, buildings are not printed.</span>
         </div>
         <div class="map-hint-sentinel" id="map-hint-sentinel" aria-hidden="true"></div>
         <div class="map-hint" id="map-hint">Select a scale to place your frame</div>
@@ -175,6 +177,7 @@
           <input type="text" id="custom-location-label" class="order-label-input" placeholder="e.g. Where I grew up" maxlength="60" autocomplete="off"/>
         </div>
         <div class="order-line"><span class="order-line-label">Finish</span><span class="order-line-val">Matte white</span></div>
+        <div class="order-line" id="order-landscape-line" hidden><span class="order-line-label">Buildings</span><span class="order-line-val"><span class="order-line-landscape-tag">Not included</span></span></div>
         <div class="order-divider"></div>
         <div class="order-total"><span class="label">Total</span><span class="price" id="order-price">&mdash;</span></div>
         <div class="order-status" id="order-status-msg">Choose a scale on the left and drag the frame to your chosen location.</div>
@@ -226,7 +229,7 @@
 <footer>
   <div class="footer-brand-col footer-col">
     <div class="footer-logo">Polyplaces<sup>&reg;</sup></div>
-    <div class="footer-tagline">Bespoke 3D map sculptures, made to order in the UK. Every place. Every person.</div>
+    <div class="footer-tagline">Hold the places you love. Bespoke 3D map sculptures, made to order in the UK.</div>
   </div>
   <div class="footer-col"><h4>Shop</h4><ul><li><a href="/store/">Design yours</a></li><li><a href="/store/?scale=small">Small</a></li><li><a href="/store/?scale=a4">A4</a></li><li><a href="/store/?scale=large">Large</a></li></ul></div>
   <div class="footer-col"><h4>Company</h4><ul><li><a href="/about/">About</a></li><li><a href="/#how">How it works</a></li><li><a href="/reviews/">Reviews</a></li><li><a href="/contact/">Contact</a></li></ul></div>
@@ -238,7 +241,9 @@
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script defer src="../assets/js/env.js?v=367b7f48"></script>
-<script defer src="../assets/js/app.js?v=8d31d4e7"></script>
+<script defer src="../assets/js/app.js?v=c6b75bb7"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<script defer src="../assets/js/turnstile.js?v=1312cb89"></script>
 <script defer src="../assets/js/analytics.js?v=ad0d4f07"></script>
 </body>
 </html>

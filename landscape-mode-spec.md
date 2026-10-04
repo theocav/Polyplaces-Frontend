@@ -1,0 +1,73 @@
+# Spec: Landscape mode
+
+## What changed
+
+`store/` and `etsy/` (shared via `assets/js/app.js` and `assets/css/styles.css`)
+gained a **Landscape mode** toggle next to the existing Rotate/Zoom frame
+controls on the map.
+
+Landscape mode means: the sculpture is fabricated as terrain relief only -
+buildings are omitted from the piece. To support wide-area landscape shots
+(hills, coastline, countryside) the zoom slider switches from its normal
+0.7-1.3x to a landscape range of **2-7x**, labelled 2-10x for customers.
+
+## Frontend changes
+
+- **UI**: a `Landscape` switch in `.frame-controls` (same dock as Rotate and
+  the always-visible Zoom slider). It fills forest green (`--forest`,
+  `--moss`) when on, and the zoom slider in the dock turns green with it.
+- **Callout**: a floating banner (`.landscape-banner`) fades in over the map
+  while active: "Landscape mode - terrain only, buildings are not printed."
+- **Zoom range**: `#zoom-slider` runs 0.7-1.3 (default 1.0) normally and
+  2-7 in landscape mode. The landscape label is stretched linearly so the
+  real 2-7 reads as 2.0x-10.0x. Turning landscape on starts at the middle
+  (real 4.5, shown 6.0x); turning it off goes back to 1.0. `zoom` sent to
+  checkout is the real value.
+- **Order summary** (store page only): a "Buildings: Not included" line
+  appears in the order panel while landscape mode is active for the current
+  selection.
+- **Cart**: cart items carry `landscape: true|false`; the cart drawer shows a
+  "Landscape - no buildings" tag on affected items.
+- **Map zoom-out**: the frame clears below Leaflet zoom 12 normally, but
+  only below zoom 9 in landscape mode so wide frames can be seen whole.
+  Turning landscape off while below 12 zooms the map back in to 12 on the
+  frame rather than clearing it.
+- **State**: landscape mode and zoom carry over when a different size is
+  selected (rotation resets). Clearing the frame resets all three.
+
+All of this lives in `applyLandscapeUI()` and the `landscape-toggle-btn`
+handler in `assets/js/app.js`, plus the `landscapeMode` module-level flag.
+
+## Backend contract change
+
+`POST /api/checkout` items now include:
+
+```jsonc
+{
+  "landscape": true // boolean, default false
+}
+```
+
+This is **new** and, unlike the pre-existing `rotation`/`zoom`/`center`
+fields (which the backend intentionally discards - see
+`checkout-endpoint-spec.md`'s "Known gaps"), `landscape` must be read and
+persisted, because it determines what actually gets fabricated.
+
+### Required backend work (not yet implemented)
+
+1. Read `item.landscape` (boolean; treat anything non-`true` as `false`).
+2. Set `metadata.landscape` on the Stripe Checkout Session/PaymentIntent,
+   following the same pattern as `metadata.framed`: comma-joined cart indices
+   of landscape items, or `"none"` if none.
+3. No pricing impact - `landscape` does not change `unit_amount` for any item,
+   standard or custom.
+4. No validation beyond boolean coercion is needed; an absent field means
+   `false`.
+
+## Out of scope / not done here
+
+- No 3D preview exists in the storefront (the map is a 2D Leaflet bbox
+  picker), so "buildings not printed" is communicated via copy/UI only, not a
+  rendered building layer being toggled off.
+- Server-side metadata write-up (item 2 above) is a backend task, tracked
+  here but not implemented in this change.
