@@ -544,7 +544,7 @@ function selectProduct(product) {
   // Place (or morph) the frame immediately at the center of the current viewport.
   if (map && handleIcon) {
     const center = prevCenter || map.getCenter();
-    const nextBBox = computeBBoxForProduct(center, product);
+    const nextBBox = computeBBoxForProduct(center, product, frameZoom);
     if (nextBBox) {
       if (prevBBox && bboxLayer && handle) {
         animateBBoxTo(nextBBox, 420);
@@ -714,7 +714,7 @@ function setupMapSearch() {
     // After search, always center the frame on the new viewport center (if a product is selected).
     if (selectedProduct && map && handleIcon) {
       const center = map.getCenter();
-      const next = computeBBoxForProduct(center, selectedProduct);
+      const next = computeBBoxForProduct(center, selectedProduct, frameZoom);
       if (next) {
         if (bbox && bboxLayer && handle) {
           animateBBoxTo(next, 420);
@@ -1165,9 +1165,9 @@ function computeBBox(c) {
   return { south: c.lat - dLat, north: c.lat + dLat, west: c.lng - dLon, east: c.lng + dLon };
 }
 
-function computeBBoxForProduct(c, product) {
+function computeBBoxForProduct(c, product, zoom = 1) {
   if (!product) return null;
-  const width = Number(product.sizeCode);
+  const width = Number(product.sizeCode) * zoom;
   if (!Number.isFinite(width)) return null;
   const ratio = Number(product.aspectRatio);
   const aspectRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
