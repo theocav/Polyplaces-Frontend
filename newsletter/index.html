@@ -19,22 +19,22 @@
   src="https://www.facebook.com/tr?id=1684282595954858&ev=PageView&noscript=1"
   /></noscript>
   <!-- End Meta Pixel Code -->
-  <title>Contact &mdash; Polyplaces</title>
-  <meta name="description" content="Get in touch with Polyplaces for commissions, questions, or anything else."/>
+  <title>Newsletter - Polyplaces</title>
+  <meta name="description" content="Join our newsletter for 10% off your first Polyplaces sculpture. Get studio notes, creative inspiration, and exclusive offers delivered to your inbox."/>
   <meta name="referrer" content="strict-origin-when-cross-origin"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <meta name="theme-color" content="#f7f4ef"/>
   <meta name="api-base" content="https://api.polyplaces.co.uk"/>
-  <link rel="canonical" href="https://polyplaces.co.uk/contact/"/>
-  <meta property="og:title" content="Contact â€” Polyplaces"/>
-  <meta property="og:description" content="Get in touch with Polyplaces for commissions, questions, or anything else. We respond within 1â€“2 business days."/>
+  <link rel="canonical" href="https://polyplaces.co.uk/newsletter/"/>
+  <meta property="og:title" content="Newsletter - Polyplaces"/>
+  <meta property="og:description" content="Join our newsletter for 10% off your first Polyplaces sculpture. Get studio notes, creative inspiration, and exclusive offers delivered to your inbox."/>
   <meta property="og:type" content="website"/>
   <meta property="og:site_name" content="Polyplaces"/>
-  <meta property="og:url" content="https://polyplaces.co.uk/contact/"/>
+  <meta property="og:url" content="https://polyplaces.co.uk/newsletter/"/>
   <meta property="og:image" content="https://polyplaces.co.uk/assets/imgs/74c45980-8acc-4220-b7b1-4b813a2ba1a1.webp"/>
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Contact â€” Polyplaces"/>
-  <meta name="twitter:description" content="Get in touch with Polyplaces for commissions, questions, or anything else. We respond within 1â€“2 business days."/>
+  <meta name="twitter:title" content="Newsletter - Polyplaces"/>
+  <meta name="twitter:description" content="Join our newsletter for 10% off your first Polyplaces sculpture. Get studio notes, creative inspiration, and exclusive offers delivered to your inbox."/>
   <meta name="twitter:image" content="https://polyplaces.co.uk/assets/imgs/74c45980-8acc-4220-b7b1-4b813a2ba1a1.webp"/>
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=1"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -56,9 +56,9 @@
       <li><a href="/#how">How it works</a></li>
       <li><a href="/#products">Sculptures</a></li>
       <li><a href="/reviews/">Reviews</a></li>
-      <li><a href="/contact/" aria-current="page">Contact</a></li>
+      <li><a href="/contact/">Contact</a></li>
       <li><a href="/etsy/">Etsy</a></li>
-      <li><a href="/newsletter/">Newsletter</a></li>
+      <li><a href="/newsletter/" aria-current="page">Newsletter</a></li>
       <li><a href="/store/" class="nav-cta btn">Customise yours &rarr;</a></li>
       <li><button type="button" class="nav-cart" id="cart-toggle" aria-label="Open cart" aria-expanded="false" aria-controls="cart-drawer">Cart <span id="cart-count">0</span></button></li>
     </ul>
@@ -72,31 +72,14 @@
 
 <main id="main" style="padding-top:60px">
   <div class="container" style="padding-top:64px;padding-bottom:80px;max-width:600px">
-    <div class="section-label">Get in touch</div>
-    <h1 class="section-h" style="margin-bottom:12px">Contact <em>us</em></h1>
-    <p style="color:#524a41;font-size:15px;line-height:1.7">We&rsquo;ll get back to you within 1&ndash;2 business days.</p>
+    <div class="section-label">Stay in the loop</div>
+    <h1 class="section-h" style="margin-bottom:12px">Join our <em>newsletter</em></h1>
+    <p style="color:#524a41;font-size:15px;line-height:1.7">Get 10% off your first piece, plus occasional studio notes and creative inspiration. No spam, unsubscribe anytime.</p>
 
-    <form class="site-form" id="contact-form" novalidate>
-      <div class="form-field">
-        <label for="name">Name</label>
-        <input type="text" id="name" name="name" autocomplete="name" required placeholder="Your name"/>
-      </div>
+    <form class="site-form" id="newsletter-form" novalidate>
       <div class="form-field">
         <label for="email">Email</label>
         <input type="email" id="email" name="email" autocomplete="email" required placeholder="you@example.com"/>
-      </div>
-      <div class="form-field">
-        <label for="subject">Subject</label>
-        <select id="subject" name="subject">
-          <option value="general">General enquiry</option>
-          <option value="commission">Commission / bespoke order</option>
-          <option value="order">Existing order</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div class="form-field">
-        <label for="message">Message</label>
-        <textarea id="message" name="message" required placeholder="How can we help?"></textarea>
       </div>
 
       <!-- Honeypot. Real people never see this; bots fill it in. -->
@@ -105,10 +88,10 @@
         <input type="text" id="company" name="company" tabindex="-1" autocomplete="off"/>
       </div>
 
-      <div class="turnstile-field" data-turnstile="contact"></div>
+      <div class="turnstile-field" data-turnstile="newsletter"></div>
 
       <div class="form-submit">
-        <button type="submit" class="btn btn-fill" id="submit-btn">Send message &rarr;</button>
+        <button type="submit" class="btn btn-fill" id="submit-btn">Sign me up &rarr;</button>
       </div>
     </form>
 
@@ -149,7 +132,7 @@
 <script defer src="/assets/js/analytics.js?v=ad0d4f07"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script defer src="../assets/js/turnstile.js?v=1312cb89"></script>
-<script defer src="../assets/js/contact.js?v=404461b6"></script>
+<script defer src="../assets/js/newsletter.js?v=d285413a"></script>
 
 </body>
 </html>
