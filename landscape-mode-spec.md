@@ -8,27 +8,28 @@ controls on the map.
 
 Landscape mode means: the sculpture is fabricated as terrain relief only -
 buildings are omitted from the piece. To support wide-area landscape shots
-(hills, coastline, countryside) the zoom slider's range extends from its
-normal 0.7-1.3x up to **10x** while the mode is active.
+(hills, coastline, countryside) the zoom slider switches from its normal
+0.7-1.3x to a landscape range of **2-7x**, labelled 2-10x for customers.
 
 ## Frontend changes
 
-- **UI**: a `Landscape` pill button in `.frame-controls` (same row as Rotate
-  and Zoom), styled with a new terrain-green palette (`--terrain`,
-  `--terrain-lt`, `--terrain-bg`) so it reads as a distinct mode rather than
-  another orange control.
+- **UI**: a `Landscape` switch in `.frame-controls` (same dock as Rotate and
+  the always-visible Zoom slider). It fills forest green (`--forest`,
+  `--moss`) when on, and the zoom slider in the dock turns green with it.
 - **Callout**: a floating banner (`.landscape-banner`) fades in over the map
   while active: "Landscape mode - terrain only, buildings are not printed."
-- **Zoom range**: `#zoom-slider` max attribute flips between `1.3` (default)
-  and `10` (landscape on). Turning landscape off clamps any zoom value above
-  1.3 back down to 1.3.
+- **Zoom range**: `#zoom-slider` runs 0.7-1.3 (default 1.0) normally and
+  2-7 in landscape mode. The landscape label is stretched linearly so the
+  real 2-7 reads as 2.0x-10.0x. Turning landscape on starts at the middle
+  (real 4.5, shown 6.0x); turning it off goes back to 1.0. `zoom` sent to
+  checkout is the real value.
 - **Order summary** (store page only): a "Buildings: Not included" line
   appears in the order panel while landscape mode is active for the current
   selection.
 - **Cart**: cart items carry `landscape: true|false`; the cart drawer shows a
   "Landscape - no buildings" tag on affected items.
-- **State reset**: landscape mode resets to `false` whenever a new size is
-  selected or the frame is cleared, same as rotation and zoom.
+- **State**: landscape mode and zoom carry over when a different size is
+  selected (rotation resets). Clearing the frame resets all three.
 
 All of this lives in `applyLandscapeUI()` and the `landscape-toggle-btn`
 handler in `assets/js/app.js`, plus the `landscapeMode` module-level flag.
