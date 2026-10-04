@@ -82,7 +82,6 @@ const _PRODUCTS_CACHE_TTL = 300000; // 5 minutes
 const _SNAPSHOT_URL = '/assets/data/products-snapshot.json';
 
 let storeInited = false;
-let _checkZoomOverlap = null; // set by initFrameControls, called by redrawFrame
 let products = [];
 let selectedProduct = null;
 let handleIcon = null;
@@ -907,6 +906,16 @@ function applyLandscapeUI() {
   const zoomVal = document.getElementById('zoom-val');
   const orderLine = document.getElementById('order-landscape-line');
 
+  // The page-wide earthy green theme hangs off this class (see styles.css).
+  // .theme-shifting briefly turns on colour transitions so the swap eases in.
+  const root = document.documentElement;
+  if (root.classList.contains('is-landscape') !== landscapeMode) {
+    root.classList.add('theme-shifting');
+    root.classList.toggle('is-landscape', landscapeMode);
+    clearTimeout(applyLandscapeUI._shiftTimer);
+    applyLandscapeUI._shiftTimer = setTimeout(() => root.classList.remove('theme-shifting'), 700);
+  }
+
   if (btn) btn.setAttribute('aria-pressed', landscapeMode ? 'true' : 'false');
   if (banner) {
     banner.classList.toggle('is-visible', landscapeMode);
@@ -921,7 +930,25 @@ function applyLandscapeUI() {
       zoomSlider.value = String(frameZoom);
     }
     if (zoomVal) zoomVal.textContent = `${frameZoom.toFixed(1)}×`;
+    syncZoomFill();
   }
+
+  if (bboxLayer) bboxLayer.setStyle({ color: frameColor(), fillColor: frameColor() });
+}
+
+// Leaflet paints the frame with literal colours, so read the live theme accent.
+function frameColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#c94f2c';
+}
+
+// The slider track is filled up to the thumb via a CSS custom property.
+function syncZoomFill() {
+  const zoomSlider = document.getElementById('zoom-slider');
+  if (!zoomSlider) return;
+  const min = Number(zoomSlider.min);
+  const max = Number(zoomSlider.max);
+  const pct = ((Number(zoomSlider.value) - min) / (max - min)) * 100;
+  zoomSlider.style.setProperty('--fill', `${Math.max(0, Math.min(100, pct))}%`);
 }
 
 // A homepage gallery piece links here with the place it shows attached, so the
@@ -954,7 +981,7 @@ function initMap() {
 
   const hIcon = L.divIcon({
     className: '',
-    html: `<div style="width:28px;height:28px;border-radius:50%;background:white;border:2.5px solid #c94f2c;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);cursor:grab"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c94f2c" stroke-width="2.5"><path d="M12 2v20M2 12h20"/></svg></div>`,
+    html: `<div style="width:28px;height:28px;border-radius:50%;background:white;border:2.5px solid var(--accent);color:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);cursor:grab;transition:border-color 0.5s,color 0.5s"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M2 12h20"/></svg></div>`,
     iconSize: [28, 28],
     iconAnchor: [14, 14],
   });
@@ -1298,7 +1325,6 @@ function createBBox(c, icon) {
   if (frameControlsEl && frameControlsEl.hidden) {
     frameControlsEl.hidden = false;
     frameControlsEl.removeAttribute('hidden');
-    if (_checkZoomOverlap) _checkZoomOverlap();
   }
 
   redrawFrame();
@@ -1319,9 +1345,9 @@ function redrawFrame() {
     bboxLayer.setLatLngs(corners);
   } else {
     bboxLayer = L.polygon(corners, {
-      color: '#c94f2c',
+      color: frameColor(),
       weight: 2,
-      fillColor: '#c94f2c',
+      fillColor: frameColor(),
       fillOpacity: 0.05,
       dashArray: '6 4',
     }).addTo(map);
@@ -1347,7 +1373,6 @@ function redrawFrame() {
   const frameControlsEl = document.getElementById('frame-controls');
   if (frameControlsEl && frameControlsEl.hidden) {
     frameControlsEl.hidden = false;
-    if (_checkZoomOverlap) _checkZoomOverlap();
   }
 }
 
@@ -1983,8 +2008,6 @@ function initFrameControls() {
   const rotBtn = document.getElementById('rotation-btn');
   const zoomSlider = document.getElementById('zoom-slider');
   const zoomVal = document.getElementById('zoom-val');
-  const controlsEl = document.getElementById('frame-controls');
-  const zoomToggleBtn = document.getElementById('zoom-toggle-btn');
 
   if (rotBtn) {
     rotBtn.addEventListener('click', () => {
@@ -2003,6 +2026,7 @@ function initFrameControls() {
     zoomSlider.addEventListener('input', () => {
       frameZoom = Number(zoomSlider.value);
       if (zoomVal) zoomVal.textContent = `${frameZoom.toFixed(1)}\u00D7`;
+      syncZoomFill();
       if (frameCenter && selectedProduct) {
         resetReviewState();
         redrawFrame();
@@ -2020,58 +2044,6 @@ function initFrameControls() {
         resetReviewState();
         redrawFrame();
         updateLocationDisplay();
-      }
-    });
-  }
-
-  // Collapse zoom into a toggle button when it would overlap the search bar
-  if (controlsEl && zoomToggleBtn) {
-    const searchEl = document.querySelector('.map-search');
-    const mapEl = document.querySelector('.config-map');
-    let _overlapLocked = false;
-
-    function checkZoomOverlap() {
-      if (_overlapLocked || controlsEl.hidden || !searchEl) return;
-      _overlapLocked = true;
-
-      // Temporarily uncollapse to measure the full-width controls accurately
-      const wasCollapsed = controlsEl.classList.contains('zoom-collapsed');
-      controlsEl.classList.remove('zoom-collapsed', 'zoom-open');
-
-      const searchRect = searchEl.getBoundingClientRect();
-      const controlsRect = controlsEl.getBoundingClientRect();
-      const overlapping = searchRect.right + 12 >= controlsRect.left;
-
-      if (overlapping) {
-        controlsEl.classList.add('zoom-collapsed');
-        if (wasCollapsed) {
-          // Restore open state only if the panel should remain open
-          // (don't re-open on map resize — just keep it closed)
-        }
-      }
-      // else: already uncollapsed by classList.remove above
-
-      // Release lock after pending resize callbacks from our DOM changes have fired
-      requestAnimationFrame(() => { _overlapLocked = false; });
-    }
-
-    _checkZoomOverlap = checkZoomOverlap;
-
-    if (mapEl) {
-      const ro = new ResizeObserver(checkZoomOverlap);
-      ro.observe(mapEl);
-    }
-
-    zoomToggleBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = controlsEl.classList.toggle('zoom-open');
-      zoomToggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    });
-
-    document.addEventListener('click', (e) => {
-      if (controlsEl.classList.contains('zoom-open') && !controlsEl.contains(e.target)) {
-        controlsEl.classList.remove('zoom-open');
-        zoomToggleBtn.setAttribute('aria-expanded', 'false');
       }
     });
   }

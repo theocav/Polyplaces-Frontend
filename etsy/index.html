@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>Etsy Bounding Box Tool â€” Polyplaces</title>
+  <title>Etsy Bounding Box Tool - Polyplaces</title>
   <meta name="description" content="Internal tool: select an area and copy its bounding box for the Etsy store."/>
   <meta name="robots" content="noindex,nofollow"/>
   <meta name="referrer" content="strict-origin-when-cross-origin"/>
@@ -19,7 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <link rel="stylesheet" href="../assets/css/styles.css?v=5f23aa9b"/>
+  <link rel="stylesheet" href="../assets/css/styles.css?v=db344cda"/>
   <style>
     /* Etsy tool: two-column layout, no pricing, no right bar. */
     #etsyPage{padding-top:60px;min-height:100vh;}
@@ -106,29 +106,21 @@
           </div>
           <div class="map-toolbar-end">
             <div class="frame-controls" id="frame-controls" hidden>
-              <button type="button" id="rotation-btn" class="frame-rotate-btn" aria-pressed="false">
-                <svg class="frame-ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                Rotate
+              <button type="button" id="rotation-btn" class="frame-btn" aria-pressed="false" title="Rotate the frame 90°">
+                <svg class="frame-ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                <span>Rotate</span>
               </button>
-              <div class="frame-ctrl-vsep" id="frame-ctrl-divider"></div>
-              <div class="frame-ctrl">
-                <button type="button" id="zoom-toggle-btn" class="zoom-toggle-btn frame-rotate-btn" aria-expanded="false" aria-label="Toggle zoom control">
-                  <svg class="frame-ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/></svg>
-                  Zoom
-                </button>
-                <div class="zoom-slider-group">
-                  <label class="frame-ctrl-label" for="zoom-slider">
-                    <svg class="frame-ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/></svg>
-                    Zoom
-                  </label>
-                  <input type="range" id="zoom-slider" min="0.7" max="1.3" step="0.1" value="1" class="frame-ctrl-range" aria-label="Frame zoom level"/>
-                  <span class="frame-ctrl-val" id="zoom-val">1.0Ã—</span>
-                </div>
+              <span class="frame-ctrl-vsep" aria-hidden="true"></span>
+              <div class="frame-zoom">
+                <label class="frame-zoom-label" for="zoom-slider">Zoom</label>
+                <input type="range" id="zoom-slider" min="0.7" max="1.3" step="0.1" value="1" class="frame-range" aria-label="Frame zoom level"/>
+                <output class="frame-zoom-val" id="zoom-val" for="zoom-slider">1.0&times;</output>
               </div>
-              <div class="frame-ctrl-vsep" id="frame-ctrl-divider-landscape"></div>
-              <button type="button" id="landscape-toggle-btn" class="frame-rotate-btn landscape-toggle-btn" aria-pressed="false">
-                <svg class="frame-ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="18" cy="6" r="2"/><path d="M2 20l6-9 4 5 3-4.5L22 20z"/></svg>
-                Landscape
+              <span class="frame-ctrl-vsep" aria-hidden="true"></span>
+              <button type="button" id="landscape-toggle-btn" class="landscape-switch" aria-pressed="false" title="Terrain only - buildings are not printed">
+                <svg class="frame-ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="6" r="2"/><path d="M2 20l6-9 4 5 3-4.5L22 20z"/></svg>
+                <span>Landscape</span>
+                <span class="landscape-switch-track" aria-hidden="true"><span class="landscape-switch-thumb"></span></span>
               </button>
             </div>
           </div>
@@ -184,7 +176,7 @@
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script defer src="../assets/js/env.js?v=367b7f48"></script>
-<script defer src="../assets/js/app.js?v=b9e8081c"></script>
+<script defer src="../assets/js/app.js?v=e6487768"></script>
 <script defer src="../assets/js/analytics.js?v=ad0d4f07"></script>
 </body>
 </html>
