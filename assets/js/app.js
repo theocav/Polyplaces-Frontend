@@ -500,16 +500,10 @@ function selectProduct(product) {
     if (activeFrameOpts) activeFrameOpts.hidden = false;
   }
 
-  // Reset frame controls for the new product.
+  // Rotation resets for the new product; landscape mode and zoom carry over.
   frameRotation = 0;
-  frameZoom = 1.0;
-  landscapeMode = false;
   const rotBtn = document.getElementById('rotation-btn');
-  const zoomSlider = document.getElementById('zoom-slider');
-  const zoomVal = document.getElementById('zoom-val');
   if (rotBtn) rotBtn.setAttribute('aria-pressed', 'false');
-  if (zoomSlider) zoomSlider.value = '1';
-  if (zoomVal) zoomVal.textContent = '1.0\u00D7';
   applyLandscapeUI();
 
   // Disable rotate button for square products and custom sizes.
@@ -889,21 +883,47 @@ let selectionMeta = null;
 let cart = [];
 let cartPreviewMaps = new Map();
 let frameRotation = 0;   // degrees 0-359
-let frameZoom = 1.0;     // 0.7-1.3 geographic scale factor (up to 10 in landscape mode)
+let frameZoom = 1.0;     // geographic scale factor: 0.7-1.3, or 2-7 in landscape mode
 let frameCenter = null;  // { lat, lng } actual center of the frame
 let frameCorners = null; // [[lat,lng]×4] rotated corners currently drawn
 let landscapeMode = false; // true = terrain-only piece (no buildings), wider zoom range unlocked
 
-const ZOOM_MAX_STANDARD = 1.3;
-const ZOOM_MAX_LANDSCAPE = 10;
+const ZOOM_STANDARD = { min: 0.7, max: 1.3, initial: 1.0 };
+// Landscape zoom really runs 2-7x, but the label reads 2-10x: the real value
+// is stretched linearly so the top of the slider shows as 10x.
+const ZOOM_LANDSCAPE = { min: 2, max: 7, displayMax: 10, initial: 4.5 };
+
+function zoomRange() {
+  return landscapeMode ? ZOOM_LANDSCAPE : ZOOM_STANDARD;
+}
+
+function zoomLabel(zoom) {
+  if (!landscapeMode) return `${zoom.toFixed(1)}×`;
+  const { min, max, displayMax } = ZOOM_LANDSCAPE;
+  const shown = min + ((zoom - min) / (max - min)) * (displayMax - min);
+  return `${shown.toFixed(1)}×`;
+}
+
+// Sets frameZoom (clamped to the current mode's range) and syncs the slider.
+function setFrameZoom(zoom) {
+  const { min, max } = zoomRange();
+  frameZoom = Math.round(Math.min(max, Math.max(min, zoom)) * 10) / 10;
+  const zoomSlider = document.getElementById('zoom-slider');
+  const zoomVal = document.getElementById('zoom-val');
+  if (zoomSlider) {
+    zoomSlider.min = String(min);
+    zoomSlider.max = String(max);
+    zoomSlider.value = String(frameZoom);
+    syncZoomFill();
+  }
+  if (zoomVal) zoomVal.textContent = zoomLabel(frameZoom);
+}
 
 // Reflects landscapeMode into the toggle button, the map banner, the zoom
 // slider's range, and (on the store page) the order summary line.
 function applyLandscapeUI() {
   const btn = document.getElementById('landscape-toggle-btn');
   const banner = document.getElementById('landscape-banner');
-  const zoomSlider = document.getElementById('zoom-slider');
-  const zoomVal = document.getElementById('zoom-val');
   const orderLine = document.getElementById('order-landscape-line');
 
   if (btn) btn.setAttribute('aria-pressed', landscapeMode ? 'true' : 'false');
@@ -913,15 +933,7 @@ function applyLandscapeUI() {
   }
   if (orderLine) orderLine.hidden = !landscapeMode;
 
-  if (zoomSlider) {
-    zoomSlider.max = String(landscapeMode ? ZOOM_MAX_LANDSCAPE : ZOOM_MAX_STANDARD);
-    if (!landscapeMode && frameZoom > ZOOM_MAX_STANDARD) {
-      frameZoom = ZOOM_MAX_STANDARD;
-      zoomSlider.value = String(frameZoom);
-    }
-    if (zoomVal) zoomVal.textContent = `${frameZoom.toFixed(1)}×`;
-    syncZoomFill();
-  }
+  setFrameZoom(frameZoom);
 }
 
 // The slider track is filled up to the thumb via a CSS custom property.
@@ -1371,18 +1383,14 @@ function clearFrame() {
   frameCenter = null;
   frameCorners = null;
   frameRotation = 0;
-  frameZoom = 1.0;
+  frameZoom = ZOOM_STANDARD.initial;
   landscapeMode = false;
   selectionMeta = null;
   selectedFrame = null;
   const _frameLine = document.getElementById('order-frame-line');
   if (_frameLine) _frameLine.hidden = true;
   const rotBtn = document.getElementById('rotation-btn');
-  const zoomSlider = document.getElementById('zoom-slider');
   if (rotBtn) rotBtn.setAttribute('aria-pressed', 'false');
-  if (zoomSlider) zoomSlider.value = '1';
-  const zoomVal = document.getElementById('zoom-val');
-  if (zoomVal) zoomVal.textContent = '1.0\u00D7';
   applyLandscapeUI();
   const frameControlsEl = document.getElementById('frame-controls');
   if (frameControlsEl) frameControlsEl.hidden = true;
@@ -1934,7 +1942,6 @@ function initCustomSizePanel() {
 function initFrameControls() {
   const rotBtn = document.getElementById('rotation-btn');
   const zoomSlider = document.getElementById('zoom-slider');
-  const zoomVal = document.getElementById('zoom-val');
 
   if (rotBtn) {
     rotBtn.addEventListener('click', () => {
@@ -1951,9 +1958,7 @@ function initFrameControls() {
 
   if (zoomSlider) {
     zoomSlider.addEventListener('input', () => {
-      frameZoom = Number(zoomSlider.value);
-      if (zoomVal) zoomVal.textContent = `${frameZoom.toFixed(1)}\u00D7`;
-      syncZoomFill();
+      setFrameZoom(Number(zoomSlider.value));
       if (frameCenter && selectedProduct) {
         resetReviewState();
         redrawFrame();
@@ -1966,6 +1971,8 @@ function initFrameControls() {
   if (landscapeBtn) {
     landscapeBtn.addEventListener('click', () => {
       landscapeMode = !landscapeMode;
+      // Each mode starts from its own default rather than a clamped leftover.
+      frameZoom = zoomRange().initial;
       applyLandscapeUI();
       if (frameCenter && selectedProduct) {
         resetReviewState();
