@@ -28,6 +28,10 @@ buildings are omitted from the piece. To support wide-area landscape shots
   selection.
 - **Cart**: cart items carry `landscape: true|false`; the cart drawer shows a
   "Landscape - no buildings" tag on affected items.
+- **Map zoom-out**: the frame clears below Leaflet zoom 12 normally, but
+  only below zoom 9 in landscape mode so wide frames can be seen whole.
+  Turning landscape off while below 12 zooms the map back in to 12 on the
+  frame rather than clearing it.
 - **State**: landscape mode and zoom carry over when a different size is
   selected (rotation resets). Clearing the frame resets all three.
 

@@ -897,6 +897,15 @@ function zoomRange() {
   return landscapeMode ? ZOOM_LANDSCAPE : ZOOM_STANDARD;
 }
 
+// Leaflet zoom below which the placed frame is cleared. Landscape frames run
+// to ~14km wide, so that mode lets the map pull back to a regional view.
+const MAP_MIN_ZOOM_STANDARD = 12;
+const MAP_MIN_ZOOM_LANDSCAPE = 9;
+
+function frameMinMapZoom() {
+  return landscapeMode ? MAP_MIN_ZOOM_LANDSCAPE : MAP_MIN_ZOOM_STANDARD;
+}
+
 function zoomLabel(zoom) {
   if (!landscapeMode) return `${zoom.toFixed(1)}×`;
   const { min, max, displayMax } = ZOOM_LANDSCAPE;
@@ -990,7 +999,7 @@ function initMap() {
 
   map.on('zoomend', () => {
     if (!bbox) return;
-    if (map.getZoom() < 12) {
+    if (map.getZoom() < frameMinMapZoom()) {
       clearFrame();
       document.getElementById('map-hint').textContent =
         'Zoom back in to place your frame — selections clear below street level.';
@@ -2034,6 +2043,11 @@ function initFrameControls() {
         resetReviewState();
         redrawFrame();
         updateLocationDisplay();
+        // Leaving landscape while pulled back past street level would clear
+        // the frame on the next zoom, so bring the map in to it instead.
+        if (map && map.getZoom() < frameMinMapZoom()) {
+          map.setView([frameCenter.lat, frameCenter.lng], frameMinMapZoom());
+        }
       }
     });
   }
