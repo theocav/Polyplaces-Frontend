@@ -82,7 +82,6 @@ const _PRODUCTS_CACHE_TTL = 300000; // 5 minutes
 const _SNAPSHOT_URL = '/assets/data/products-snapshot.json';
 
 let storeInited = false;
-let _checkZoomOverlap = null; // set by initFrameControls, called by redrawFrame
 let products = [];
 let selectedProduct = null;
 let handleIcon = null;
@@ -501,15 +500,11 @@ function selectProduct(product) {
     if (activeFrameOpts) activeFrameOpts.hidden = false;
   }
 
-  // Reset frame controls for the new product.
+  // Rotation resets for the new product; landscape mode and zoom carry over.
   frameRotation = 0;
-  frameZoom = 1.0;
   const rotBtn = document.getElementById('rotation-btn');
-  const zoomSlider = document.getElementById('zoom-slider');
-  const zoomVal = document.getElementById('zoom-val');
   if (rotBtn) rotBtn.setAttribute('aria-pressed', 'false');
-  if (zoomSlider) zoomSlider.value = '1';
-  if (zoomVal) zoomVal.textContent = '1.0\u00D7';
+  applyLandscapeUI();
 
   // Disable rotate button for square products and custom sizes.
   const isSquare = Math.abs((Number(product.aspectRatio) || 1) - 1) < 0.01;
@@ -549,7 +544,7 @@ function selectProduct(product) {
   // Place (or morph) the frame immediately at the center of the current viewport.
   if (map && handleIcon) {
     const center = prevCenter || map.getCenter();
-    const nextBBox = computeBBoxForProduct(center, product);
+    const nextBBox = computeBBoxForProduct(center, product, frameZoom);
     if (nextBBox) {
       if (prevBBox && bboxLayer && handle) {
         animateBBoxTo(nextBBox, 420);
@@ -719,7 +714,7 @@ function setupMapSearch() {
     // After search, always center the frame on the new viewport center (if a product is selected).
     if (selectedProduct && map && handleIcon) {
       const center = map.getCenter();
-      const next = computeBBoxForProduct(center, selectedProduct);
+      const next = computeBBoxForProduct(center, selectedProduct, frameZoom);
       if (next) {
         if (bbox && bboxLayer && handle) {
           animateBBoxTo(next, 420);
@@ -888,9 +883,77 @@ let selectionMeta = null;
 let cart = [];
 let cartPreviewMaps = new Map();
 let frameRotation = 0;   // degrees 0-359
-let frameZoom = 1.0;     // 0.7-1.3 geographic scale factor
+let frameZoom = 1.0;     // geographic scale factor: 0.7-1.3, or 2-7 in landscape mode
 let frameCenter = null;  // { lat, lng } actual center of the frame
 let frameCorners = null; // [[lat,lng]×4] rotated corners currently drawn
+let landscapeMode = false; // true = terrain-only piece (no buildings), wider zoom range unlocked
+
+const ZOOM_STANDARD = { min: 0.7, max: 1.3, initial: 1.0 };
+// Landscape zoom really runs 2-7x, but the label reads 2-10x: the real value
+// is stretched linearly so the top of the slider shows as 10x.
+const ZOOM_LANDSCAPE = { min: 2, max: 7, displayMax: 10, initial: 4.5 };
+
+function zoomRange() {
+  return landscapeMode ? ZOOM_LANDSCAPE : ZOOM_STANDARD;
+}
+
+// Leaflet zoom below which the placed frame is cleared. Landscape frames run
+// to ~14km wide, so that mode lets the map pull back to a regional view.
+const MAP_MIN_ZOOM_STANDARD = 12;
+const MAP_MIN_ZOOM_LANDSCAPE = 9;
+
+function frameMinMapZoom() {
+  return landscapeMode ? MAP_MIN_ZOOM_LANDSCAPE : MAP_MIN_ZOOM_STANDARD;
+}
+
+function zoomLabel(zoom) {
+  if (!landscapeMode) return `${zoom.toFixed(1)}×`;
+  const { min, max, displayMax } = ZOOM_LANDSCAPE;
+  const shown = min + ((zoom - min) / (max - min)) * (displayMax - min);
+  return `${shown.toFixed(1)}×`;
+}
+
+// Sets frameZoom (clamped to the current mode's range) and syncs the slider.
+function setFrameZoom(zoom) {
+  const { min, max } = zoomRange();
+  frameZoom = Math.round(Math.min(max, Math.max(min, zoom)) * 10) / 10;
+  const zoomSlider = document.getElementById('zoom-slider');
+  const zoomVal = document.getElementById('zoom-val');
+  if (zoomSlider) {
+    zoomSlider.min = String(min);
+    zoomSlider.max = String(max);
+    zoomSlider.value = String(frameZoom);
+    syncZoomFill();
+  }
+  if (zoomVal) zoomVal.textContent = zoomLabel(frameZoom);
+}
+
+// Reflects landscapeMode into the toggle button, the map banner, the zoom
+// slider's range, and (on the store page) the order summary line.
+function applyLandscapeUI() {
+  const btn = document.getElementById('landscape-toggle-btn');
+  const banner = document.getElementById('landscape-banner');
+  const orderLine = document.getElementById('order-landscape-line');
+
+  if (btn) btn.setAttribute('aria-pressed', landscapeMode ? 'true' : 'false');
+  if (banner) {
+    banner.classList.toggle('is-visible', landscapeMode);
+    banner.setAttribute('aria-hidden', landscapeMode ? 'false' : 'true');
+  }
+  if (orderLine) orderLine.hidden = !landscapeMode;
+
+  setFrameZoom(frameZoom);
+}
+
+// The slider track is filled up to the thumb via a CSS custom property.
+function syncZoomFill() {
+  const zoomSlider = document.getElementById('zoom-slider');
+  if (!zoomSlider) return;
+  const min = Number(zoomSlider.min);
+  const max = Number(zoomSlider.max);
+  const pct = ((Number(zoomSlider.value) - min) / (max - min)) * 100;
+  zoomSlider.style.setProperty('--fill', `${Math.max(0, Math.min(100, pct))}%`);
+}
 
 function initMap() {
   const ukBounds = L.latLngBounds([49.8, -8.7], [60.9, 1.9]);
@@ -922,7 +985,7 @@ function initMap() {
 
   map.on('zoomend', () => {
     if (!bbox) return;
-    if (map.getZoom() < 12) {
+    if (map.getZoom() < frameMinMapZoom()) {
       clearFrame();
       document.getElementById('map-hint').textContent =
         'Zoom back in to place your frame — selections clear below street level.';
@@ -1111,9 +1174,9 @@ function computeBBox(c) {
   return { south: c.lat - dLat, north: c.lat + dLat, west: c.lng - dLon, east: c.lng + dLon };
 }
 
-function computeBBoxForProduct(c, product) {
+function computeBBoxForProduct(c, product, zoom = 1) {
   if (!product) return null;
-  const width = Number(product.sizeCode);
+  const width = Number(product.sizeCode) * zoom;
   if (!Number.isFinite(width)) return null;
   const ratio = Number(product.aspectRatio);
   const aspectRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
@@ -1252,7 +1315,6 @@ function createBBox(c, icon) {
   if (frameControlsEl && frameControlsEl.hidden) {
     frameControlsEl.hidden = false;
     frameControlsEl.removeAttribute('hidden');
-    if (_checkZoomOverlap) _checkZoomOverlap();
   }
 
   redrawFrame();
@@ -1301,7 +1363,6 @@ function redrawFrame() {
   const frameControlsEl = document.getElementById('frame-controls');
   if (frameControlsEl && frameControlsEl.hidden) {
     frameControlsEl.hidden = false;
-    if (_checkZoomOverlap) _checkZoomOverlap();
   }
 }
 
@@ -1331,17 +1392,15 @@ function clearFrame() {
   frameCenter = null;
   frameCorners = null;
   frameRotation = 0;
-  frameZoom = 1.0;
+  frameZoom = ZOOM_STANDARD.initial;
+  landscapeMode = false;
   selectionMeta = null;
   selectedFrame = null;
   const _frameLine = document.getElementById('order-frame-line');
   if (_frameLine) _frameLine.hidden = true;
   const rotBtn = document.getElementById('rotation-btn');
-  const zoomSlider = document.getElementById('zoom-slider');
   if (rotBtn) rotBtn.setAttribute('aria-pressed', 'false');
-  if (zoomSlider) zoomSlider.value = '1';
-  const zoomVal = document.getElementById('zoom-val');
-  if (zoomVal) zoomVal.textContent = '1.0\u00D7';
+  applyLandscapeUI();
   const frameControlsEl = document.getElementById('frame-controls');
   if (frameControlsEl) frameControlsEl.hidden = true;
   document.getElementById('sel-run').disabled = true;
@@ -1377,6 +1436,7 @@ function updateLocationDisplay() {
     bbox,
     rotation: frameRotation,
     zoom: frameZoom,
+    landscape: landscapeMode,
     locationText: null,
   };
   const btn = document.getElementById('sel-run');
@@ -1446,10 +1506,12 @@ function renderCart() {
       ? `<div class="cart-item-meta cart-item-custom-label">${escapeHtml(item.customLabel)}</div><div class="cart-item-geo">${escapeHtml(item.location)}</div>`
       : `<div class="cart-item-meta">${escapeHtml(item.location)}</div>`;
     const frameLine = item.frame ? `<div class="cart-item-frame">${escapeHtml(item.frameName || 'With frame')}</div>` : '';
+    const landscapeLine = item.landscape ? '<div class="cart-item-landscape">Landscape &middot; no buildings</div>' : '';
     itemEl.innerHTML = `
       <div class="cart-item-preview" data-item-id="${escapeHtml(item.id)}"></div>
       <div class="cart-item-title">${escapeHtml(item.name)}</div>
       ${frameLine}
+      ${landscapeLine}
       ${labelLine}
       <div class="cart-item-row">
         <div class="cart-item-price">${formatPrice(item.price)}</div>
@@ -1508,6 +1570,7 @@ function addSelectionToCart() {
     center: selectionMeta.center,
     rotation: selectionMeta.rotation || 0,
     zoom: selectionMeta.zoom || 1,
+    landscape: !!selectionMeta.landscape,
     frame: hasFrame,
     framePriceId: hasFrame ? selectedFrameData.priceId : null,
     frameProductId: hasFrame ? (selectedFrameData.productId || null) : null,
@@ -1654,6 +1717,7 @@ async function checkoutCart() {
             center: item.center,
             rotation: item.rotation,
             zoom: item.zoom,
+            landscape: !!item.landscape,
             location: item.location,
             customLabel: item.customLabel,
             // v2 shape once the frame's productId is known; the backend still accepts
@@ -1887,9 +1951,6 @@ function initCustomSizePanel() {
 function initFrameControls() {
   const rotBtn = document.getElementById('rotation-btn');
   const zoomSlider = document.getElementById('zoom-slider');
-  const zoomVal = document.getElementById('zoom-val');
-  const controlsEl = document.getElementById('frame-controls');
-  const zoomToggleBtn = document.getElementById('zoom-toggle-btn');
 
   if (rotBtn) {
     rotBtn.addEventListener('click', () => {
@@ -1906,8 +1967,7 @@ function initFrameControls() {
 
   if (zoomSlider) {
     zoomSlider.addEventListener('input', () => {
-      frameZoom = Number(zoomSlider.value);
-      if (zoomVal) zoomVal.textContent = `${frameZoom.toFixed(1)}\u00D7`;
+      setFrameZoom(Number(zoomSlider.value));
       if (frameCenter && selectedProduct) {
         resetReviewState();
         redrawFrame();
@@ -1916,54 +1976,22 @@ function initFrameControls() {
     });
   }
 
-  // Collapse zoom into a toggle button when it would overlap the search bar
-  if (controlsEl && zoomToggleBtn) {
-    const searchEl = document.querySelector('.map-search');
-    const mapEl = document.querySelector('.config-map');
-    let _overlapLocked = false;
-
-    function checkZoomOverlap() {
-      if (_overlapLocked || controlsEl.hidden || !searchEl) return;
-      _overlapLocked = true;
-
-      // Temporarily uncollapse to measure the full-width controls accurately
-      const wasCollapsed = controlsEl.classList.contains('zoom-collapsed');
-      controlsEl.classList.remove('zoom-collapsed', 'zoom-open');
-
-      const searchRect = searchEl.getBoundingClientRect();
-      const controlsRect = controlsEl.getBoundingClientRect();
-      const overlapping = searchRect.right + 12 >= controlsRect.left;
-
-      if (overlapping) {
-        controlsEl.classList.add('zoom-collapsed');
-        if (wasCollapsed) {
-          // Restore open state only if the panel should remain open
-          // (don't re-open on map resize — just keep it closed)
+  const landscapeBtn = document.getElementById('landscape-toggle-btn');
+  if (landscapeBtn) {
+    landscapeBtn.addEventListener('click', () => {
+      landscapeMode = !landscapeMode;
+      // Each mode starts from its own default rather than a clamped leftover.
+      frameZoom = zoomRange().initial;
+      applyLandscapeUI();
+      if (frameCenter && selectedProduct) {
+        resetReviewState();
+        redrawFrame();
+        updateLocationDisplay();
+        // Leaving landscape while pulled back past street level would clear
+        // the frame on the next zoom, so bring the map in to it instead.
+        if (map && map.getZoom() < frameMinMapZoom()) {
+          map.setView([frameCenter.lat, frameCenter.lng], frameMinMapZoom());
         }
-      }
-      // else: already uncollapsed by classList.remove above
-
-      // Release lock after pending resize callbacks from our DOM changes have fired
-      requestAnimationFrame(() => { _overlapLocked = false; });
-    }
-
-    _checkZoomOverlap = checkZoomOverlap;
-
-    if (mapEl) {
-      const ro = new ResizeObserver(checkZoomOverlap);
-      ro.observe(mapEl);
-    }
-
-    zoomToggleBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = controlsEl.classList.toggle('zoom-open');
-      zoomToggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    });
-
-    document.addEventListener('click', (e) => {
-      if (controlsEl.classList.contains('zoom-open') && !controlsEl.contains(e.target)) {
-        controlsEl.classList.remove('zoom-open');
-        zoomToggleBtn.setAttribute('aria-expanded', 'false');
       }
     });
   }
