@@ -711,42 +711,13 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
   .frame-btn{padding:0 10px}
 }
 
-/* Landscape mode - the whole page shifts into a rich, earthy green. Tokens are
-   swapped on <html>; the colour change eases in via .theme-shifting (app.js). */
+/* Landscape palette - used only by the frame controls and the map banner. While
+   landscape is on, the zoom slider inside the dock picks up the green too. */
 :root{
   --forest:#26391f;
   --moss:#4a6a35;
 }
-html.is-landscape{
-  --bg:        #eff0e4;
-  --bg-warm:   #e2e5d2;
-  --white:     #fbfbf5;
-  --ink:       #18231a;
-  --mid:       #465042;
-  --light:     #6c7564;
-  --accent:    #4a6a35;
-  --accent-lt: #658a48;
-  --accent-bg: #e9efdc;
-  --border:    rgba(24,35,26,0.12);
-  --shadow:    rgba(24,35,26,0.2);
-}
-html.theme-shifting *,
-html.theme-shifting *::before,
-html.theme-shifting *::after{
-  transition:background-color 0.6s ease,border-color 0.6s ease,color 0.6s ease,
-    fill 0.6s ease,stroke 0.6s ease,box-shadow 0.6s ease !important;
-}
-#store-map .leaflet-tile-pane{transition:filter 0.8s ease}
-html.is-landscape nav{background:rgba(239,240,228,0.92)}
-html.is-landscape #store-map .leaflet-tile-pane{
-  filter:sepia(0.32) hue-rotate(38deg) saturate(1.15) brightness(0.97);
-}
-.config-map::after{
-  content:'';position:absolute;inset:0;pointer-events:none;z-index:401;
-  box-shadow:inset 0 0 120px rgba(38,57,31,0.3);
-  opacity:0;transition:opacity 0.8s ease;
-}
-html.is-landscape .config-map::after{opacity:1}
+.frame-controls:has(.landscape-switch[aria-pressed="true"]){--accent:var(--moss)}
 
 /* Floating callout over the map while landscape mode is on. Sits above
    Leaflet's panes (z-index 400) and clear of the top toolbar. */
@@ -771,7 +742,6 @@ html.is-landscape .config-map::after{opacity:1}
   .landscape-banner.is-visible{transform:translateY(0)}
 }
 @media(prefers-reduced-motion:reduce){
-  html.theme-shifting *,html.theme-shifting *::before,html.theme-shifting *::after{transition:none !important}
   .landscape-banner,.landscape-switch-thumb,.frame-btn .frame-ctrl-icon{transition:none}
 }
 
