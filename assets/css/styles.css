@@ -9,9 +9,6 @@
   --accent:    #c94f2c;
   --accent-lt: #e8684a;
   --accent-bg: #fdf0ec;
-  --terrain:    #3f6b4f;
-  --terrain-lt: #5c8f6d;
-  --terrain-bg: #eaf3ec;
   --border:    rgba(26,23,20,0.1);
   --serif:     'Fraunces', Georgia, serif;
   --sans:      'DM Sans', system-ui, sans-serif;
@@ -349,6 +346,7 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 .config-right{background:var(--white);border-left:1px solid var(--border);padding:28px 24px;display:flex;flex-direction:column;gap:20px;}
 .order-summary-title{font-family:var(--serif);font-size:20px;font-weight:400;color:var(--ink);padding-bottom:16px;border-bottom:1px solid var(--border);}
 .order-line{display:flex;justify-content:space-between;align-items:flex-start;font-size:13px}
+.order-line[hidden]{display:none}
 .order-line-label{color:var(--mid)}
 .order-line-val{color:var(--ink);font-weight:500;text-align:right}
 .order-line-val.pending{color:var(--light);font-style:italic;font-weight:400}
@@ -590,7 +588,6 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
   }
   .map-search input{width:100%}
   .map-hint{white-space:normal;max-width:calc(100% - 32px);text-align:center}
-  .frame-controls{padding:4px 8px 4px 5px;gap:5px}
   .order-cta{
     position:sticky;bottom:0;z-index:5;background:var(--white);
     margin:0 -20px;padding:12px 20px 8px;border-top:1px solid var(--border);
@@ -610,116 +607,190 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 .store-size-loading{display:flex;align-items:center;gap:10px;padding:12px 14px;font-size:12px;color:var(--mid);border:1px dashed var(--border);background:var(--bg);border-radius:4px;margin-top:8px}
 .store-size-loading-spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
 
-/* Frame controls — rotate button & zoom slider, top-right of map */
+/* Frame controls - one floating dock for rotate, zoom and landscape. The slider
+   is always visible; when space runs short the toolbar wraps onto a second row. */
+.map-toolbar{flex-wrap:wrap}
 .frame-controls{
-  position:relative;
-  background:rgba(255,255,255,0.96);border:1px solid var(--border);
-  border-radius:999px;padding:5px 10px 5px 6px;
-  box-shadow:0 4px 18px rgba(26,23,20,0.12);backdrop-filter:blur(8px);
-  display:flex;flex-direction:row;align-items:center;gap:6px;
-  flex-shrink:0;
+  display:flex;align-items:center;gap:2px;flex-shrink:0;
+  padding:4px;border-radius:999px;
+  background:rgba(255,255,255,0.94);border:1px solid var(--border);
+  box-shadow:0 1px 2px rgba(26,23,20,0.06),0 10px 28px rgba(26,23,20,0.12);
+  backdrop-filter:blur(10px) saturate(1.2);
 }
-.frame-ctrl{display:flex;align-items:center;gap:8px}
-.frame-ctrl-label{
-  display:flex;align-items:center;gap:4px;
-  font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;
-  color:var(--mid);white-space:nowrap;flex-shrink:0;
+.frame-ctrl-icon{width:14px;height:14px;flex-shrink:0;stroke:currentColor}
+.frame-ctrl-vsep{width:1px;height:20px;background:var(--border);flex-shrink:0;margin:0 4px}
+
+.frame-btn{
+  display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 13px 0 11px;
+  border:0;border-radius:999px;background:transparent;color:var(--mid);
+  font:500 12px/1 var(--sans);letter-spacing:0.01em;white-space:nowrap;cursor:pointer;
+  transition:background 0.2s,color 0.2s;
 }
-.frame-ctrl-icon{width:12px;height:12px;flex-shrink:0;stroke:currentColor}
-.frame-ctrl-range{
-  width:90px;accent-color:var(--accent);
-  height:4px;cursor:pointer;
+.frame-btn .frame-ctrl-icon{transition:transform 0.4s cubic-bezier(0.3,1.3,0.5,1)}
+.frame-btn:hover{background:var(--bg);color:var(--ink)}
+.frame-btn[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent)}
+.frame-btn[aria-pressed="true"] .frame-ctrl-icon{transform:rotate(-90deg)}
+.frame-btn:disabled{opacity:0.4;cursor:not-allowed;background:transparent;color:var(--mid)}
+
+.frame-zoom{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px 0 10px}
+.frame-zoom-label{font:500 12px/1 var(--sans);letter-spacing:0.01em;color:var(--mid);cursor:pointer}
+.frame-zoom-val{
+  font-family:var(--serif);font-size:14px;line-height:1;color:var(--ink);
+  min-width:36px;text-align:right;font-variant-numeric:tabular-nums;
 }
-.frame-ctrl-val{
-  font-size:11px;font-weight:600;color:var(--ink);
-  min-width:30px;text-align:right;font-variant-numeric:tabular-nums;
+
+/* Custom range: hairline track filled up to the thumb (--fill set by app.js). */
+.frame-range{
+  --fill:50%;--track:rgba(26,23,20,0.12);
+  -webkit-appearance:none;appearance:none;
+  width:128px;height:20px;margin:0;background:transparent;cursor:pointer;
 }
-.frame-ctrl-vsep{width:1px;height:18px;background:var(--border);flex-shrink:0;margin:0 2px}
-.frame-rotate-btn{
-  display:flex;align-items:center;gap:5px;
-  background:transparent;border:1.5px solid var(--border);
-  color:var(--mid);font-family:var(--sans);
-  font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;
-  padding:5px 10px;border-radius:999px;cursor:pointer;
-  transition:border-color 0.15s,background 0.15s,color 0.15s;white-space:nowrap;
+.frame-range:focus{outline:none}
+.frame-range::-webkit-slider-runnable-track{
+  height:4px;border-radius:999px;
+  background:linear-gradient(to right,var(--accent) 0 var(--fill),var(--track) var(--fill) 100%);
 }
-.frame-rotate-btn:hover{border-color:var(--accent);color:var(--ink)}
-.frame-rotate-btn[aria-pressed="true"]{
-  background:var(--accent-bg);border-color:var(--accent);color:var(--accent);
+.frame-range::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;margin-top:-6px;border-radius:50%;
+  background:#fff;border:1.5px solid var(--accent);
+  box-shadow:0 1px 3px rgba(26,23,20,0.2);
+  transition:transform 0.15s ease,box-shadow 0.15s ease,border-color 0.5s;
 }
-.frame-rotate-btn:disabled{
-  opacity:0.35;cursor:not-allowed;color:var(--light);border-color:var(--border);
-  background:transparent;
+.frame-range::-moz-range-track{height:4px;border-radius:999px;background:var(--track)}
+.frame-range::-moz-range-progress{height:4px;border-radius:999px;background:var(--accent)}
+.frame-range::-moz-range-thumb{
+  width:14px;height:14px;border-radius:50%;background:#fff;border:1.5px solid var(--accent);
+  box-shadow:0 1px 3px rgba(26,23,20,0.2);
+  transition:transform 0.15s ease,box-shadow 0.15s ease,border-color 0.5s;
 }
-/* Zoom collapse: toggle button hidden by default; slider group visible */
-.zoom-toggle-btn{display:none}
-.zoom-slider-group{display:flex;align-items:center;gap:8px}
-/* Collapsed state: show toggle button, hide inline slider */
-.frame-controls.zoom-collapsed .zoom-toggle-btn{display:flex}
-.frame-controls.zoom-collapsed .zoom-slider-group{display:none}
-/* Expanded panel (dropdown) when collapsed+open */
-.frame-controls.zoom-collapsed.zoom-open .zoom-slider-group{
-  display:flex;align-items:center;gap:8px;
-  position:absolute;top:calc(100% + 6px);right:0;
-  background:rgba(255,255,255,0.96);border:1px solid var(--border);
-  border-radius:999px;padding:5px 10px 5px 8px;
-  box-shadow:0 4px 18px rgba(26,23,20,0.12);backdrop-filter:blur(8px);
-  white-space:nowrap;
+.frame-range:hover::-webkit-slider-thumb{transform:scale(1.12)}
+.frame-range:hover::-moz-range-thumb{transform:scale(1.12)}
+.frame-range:active::-webkit-slider-thumb,
+.frame-range:focus-visible::-webkit-slider-thumb{
+  transform:scale(1.15);
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 18%,transparent),0 1px 3px rgba(26,23,20,0.2);
 }
-.frame-controls.zoom-collapsed .zoom-toggle-btn[aria-expanded="true"]{
-  background:var(--accent-bg);border-color:var(--accent);color:var(--accent);
+.frame-range:active::-moz-range-thumb,
+.frame-range:focus-visible::-moz-range-thumb{
+  transform:scale(1.15);
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 18%,transparent),0 1px 3px rgba(26,23,20,0.2);
 }
+
+/* Landscape switch - label plus a small toggle track; fills deep green when on. */
+.landscape-switch{
+  display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 6px 0 12px;
+  border:0;border-radius:999px;background:transparent;color:var(--mid);
+  font:500 12px/1 var(--sans);letter-spacing:0.01em;white-space:nowrap;cursor:pointer;
+  transition:background 0.35s ease,color 0.35s ease,box-shadow 0.35s ease;
+}
+.landscape-switch:hover{background:var(--bg);color:var(--ink)}
+.landscape-switch-track{
+  position:relative;width:30px;height:18px;border-radius:999px;flex-shrink:0;
+  background:rgba(26,23,20,0.14);transition:background 0.35s ease;
+}
+.landscape-switch-thumb{
+  position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 2px rgba(26,23,20,0.3);
+  transition:transform 0.35s cubic-bezier(0.3,1.4,0.5,1);
+}
+.landscape-switch[aria-pressed="true"]{
+  background:linear-gradient(135deg,var(--forest) 0%,var(--moss) 100%);color:#f4f1e6;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.12),0 4px 14px rgba(39,61,36,0.35);
+}
+.landscape-switch[aria-pressed="true"] .landscape-switch-track{background:rgba(244,241,230,0.28)}
+.landscape-switch[aria-pressed="true"] .landscape-switch-thumb{transform:translateX(12px);background:#f4f1e6}
+
 @media(max-width:640px){
-  .frame-ctrl-range{width:70px}
+  .map-toolbar-end{flex-basis:100%}
+  .frame-controls{width:100%}
+  .frame-zoom{flex:1;min-width:0}
+  .frame-range{flex:1;min-width:60px;width:auto}
+}
+@media(max-width:400px){
+  .frame-btn span,.frame-zoom-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .frame-btn{padding:0 10px}
 }
 
-/* Landscape mode — toggle pill uses the terrain palette so it reads as a distinct
-   mode from rotate/zoom rather than another orange control. */
-.landscape-toggle-btn[aria-pressed="true"]{
-  background:var(--terrain-bg);border-color:var(--terrain);color:var(--terrain);
+/* Landscape mode - the whole page shifts into a rich, earthy green. Tokens are
+   swapped on <html>; the colour change eases in via .theme-shifting (app.js). */
+:root{
+  --forest:#26391f;
+  --moss:#4a6a35;
 }
-.landscape-toggle-btn .frame-ctrl-icon{transition:transform 0.2s}
-.landscape-toggle-btn[aria-pressed="true"] .frame-ctrl-icon{transform:translateY(-1px) scale(1.05)}
+html.is-landscape{
+  --bg:        #eff0e4;
+  --bg-warm:   #e2e5d2;
+  --white:     #fbfbf5;
+  --ink:       #18231a;
+  --mid:       #465042;
+  --light:     #6c7564;
+  --accent:    #4a6a35;
+  --accent-lt: #658a48;
+  --accent-bg: #e9efdc;
+  --border:    rgba(24,35,26,0.12);
+  --shadow:    rgba(24,35,26,0.2);
+}
+html.theme-shifting *,
+html.theme-shifting *::before,
+html.theme-shifting *::after{
+  transition:background-color 0.6s ease,border-color 0.6s ease,color 0.6s ease,
+    fill 0.6s ease,stroke 0.6s ease,box-shadow 0.6s ease !important;
+}
+#store-map .leaflet-tile-pane{transition:filter 0.8s ease}
+html.is-landscape nav{background:rgba(239,240,228,0.92)}
+html.is-landscape #store-map .leaflet-tile-pane{
+  filter:sepia(0.32) hue-rotate(38deg) saturate(1.15) brightness(0.97);
+}
+.config-map::after{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:401;
+  box-shadow:inset 0 0 120px rgba(38,57,31,0.3);
+  opacity:0;transition:opacity 0.8s ease;
+}
+html.is-landscape .config-map::after{opacity:1}
 
-/* Floating banner shown over the map while landscape mode is active — the
-   clear, sleek callout that buildings are omitted from the piece. */
+/* Floating callout over the map while landscape mode is on. Sits above
+   Leaflet's panes (z-index 400) and clear of the top toolbar. */
 .landscape-banner{
-  position:absolute;top:14px;left:50%;transform:translateX(-50%) translateY(-6px);
-  z-index:20;display:flex;align-items:center;gap:8px;
-  background:linear-gradient(135deg,var(--terrain) 0%,var(--terrain-lt) 100%);
-  color:#fff;padding:8px 16px 8px 12px;border-radius:999px;
-  font-size:12px;font-weight:500;letter-spacing:0.01em;white-space:nowrap;
-  box-shadow:0 8px 24px rgba(63,107,79,0.32);
+  position:absolute;bottom:60px;left:50%;transform:translateX(-50%) translateY(8px);
+  z-index:460;display:flex;align-items:center;gap:9px;
+  background:linear-gradient(135deg,var(--forest) 0%,var(--moss) 100%);
+  color:#f4f1e6;padding:9px 18px 9px 13px;border-radius:999px;
+  font-size:12px;font-weight:400;letter-spacing:0.01em;white-space:nowrap;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.12),0 10px 30px rgba(38,57,31,0.35);
   opacity:0;pointer-events:none;
-  transition:opacity 0.28s ease,transform 0.28s ease;
+  transition:opacity 0.35s ease,transform 0.35s cubic-bezier(0.3,1.3,0.5,1);
 }
-.landscape-banner.is-visible{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
-.landscape-banner-icon{width:15px;height:15px;flex-shrink:0;stroke:#fff}
-.landscape-banner strong{font-weight:700}
+.landscape-banner.is-visible{opacity:1;transform:translateX(-50%) translateY(0)}
+.landscape-banner-icon{width:15px;height:15px;flex-shrink:0;stroke:currentColor}
+.landscape-banner strong{font-family:var(--serif);font-size:13px;font-weight:500;font-style:italic}
 @media(max-width:640px){
   .landscape-banner{
-    left:10px;right:10px;top:10px;transform:translateY(-6px);
-    white-space:normal;text-align:left;font-size:11.5px;
+    left:12px;right:12px;bottom:56px;transform:translateY(8px);
+    white-space:normal;justify-content:center;text-align:center;font-size:11.5px;
   }
   .landscape-banner.is-visible{transform:translateY(0)}
+}
+@media(prefers-reduced-motion:reduce){
+  html.theme-shifting *,html.theme-shifting *::before,html.theme-shifting *::after{transition:none !important}
+  .landscape-banner,.landscape-switch-thumb,.frame-btn .frame-ctrl-icon{transition:none}
 }
 
 /* Order summary + cart tags for landscape mode (store page) */
 .order-line-landscape-tag{
-  display:inline-flex;align-items:center;gap:4px;
-  color:var(--terrain);font-weight:600;font-size:11px;
+  display:inline-flex;align-items:center;gap:6px;
+  color:var(--moss);font-weight:600;font-size:11px;
   letter-spacing:0.04em;text-transform:uppercase;
 }
 .order-line-landscape-tag::before{
-  content:'';width:6px;height:6px;border-radius:50%;background:var(--terrain-lt);flex-shrink:0;
+  content:'';width:6px;height:6px;border-radius:50%;background:var(--moss);flex-shrink:0;
 }
 .cart-item-landscape{
-  display:inline-flex;align-items:center;gap:5px;
-  font-size:11px;font-weight:600;color:var(--terrain);
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:600;color:var(--moss);
   letter-spacing:0.03em;text-transform:uppercase;margin-top:2px;
 }
 .cart-item-landscape::before{
-  content:'';width:6px;height:6px;border-radius:50%;background:var(--terrain-lt);flex-shrink:0;
+  content:'';width:6px;height:6px;border-radius:50%;background:var(--moss);flex-shrink:0;
 }
 
 /* If the map toolbar gets too narrow, stack search and controls vertically rather than shrinking the search below ~250px. */
