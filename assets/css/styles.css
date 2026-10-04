@@ -9,6 +9,9 @@
   --accent:    #c94f2c;
   --accent-lt: #e8684a;
   --accent-bg: #fdf0ec;
+  --terrain:    #3f6b4f;
+  --terrain-lt: #5c8f6d;
+  --terrain-bg: #eaf3ec;
   --border:    rgba(26,23,20,0.1);
   --serif:     'Fraunces', Georgia, serif;
   --sans:      'DM Sans', system-ui, sans-serif;
@@ -668,6 +671,55 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 }
 @media(max-width:640px){
   .frame-ctrl-range{width:70px}
+}
+
+/* Landscape mode — toggle pill uses the terrain palette so it reads as a distinct
+   mode from rotate/zoom rather than another orange control. */
+.landscape-toggle-btn[aria-pressed="true"]{
+  background:var(--terrain-bg);border-color:var(--terrain);color:var(--terrain);
+}
+.landscape-toggle-btn .frame-ctrl-icon{transition:transform 0.2s}
+.landscape-toggle-btn[aria-pressed="true"] .frame-ctrl-icon{transform:translateY(-1px) scale(1.05)}
+
+/* Floating banner shown over the map while landscape mode is active — the
+   clear, sleek callout that buildings are omitted from the piece. */
+.landscape-banner{
+  position:absolute;top:14px;left:50%;transform:translateX(-50%) translateY(-6px);
+  z-index:20;display:flex;align-items:center;gap:8px;
+  background:linear-gradient(135deg,var(--terrain) 0%,var(--terrain-lt) 100%);
+  color:#fff;padding:8px 16px 8px 12px;border-radius:999px;
+  font-size:12px;font-weight:500;letter-spacing:0.01em;white-space:nowrap;
+  box-shadow:0 8px 24px rgba(63,107,79,0.32);
+  opacity:0;pointer-events:none;
+  transition:opacity 0.28s ease,transform 0.28s ease;
+}
+.landscape-banner.is-visible{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+.landscape-banner-icon{width:15px;height:15px;flex-shrink:0;stroke:#fff}
+.landscape-banner strong{font-weight:700}
+@media(max-width:640px){
+  .landscape-banner{
+    left:10px;right:10px;top:10px;transform:translateY(-6px);
+    white-space:normal;text-align:left;font-size:11.5px;
+  }
+  .landscape-banner.is-visible{transform:translateY(0)}
+}
+
+/* Order summary + cart tags for landscape mode (store page) */
+.order-line-landscape-tag{
+  display:inline-flex;align-items:center;gap:4px;
+  color:var(--terrain);font-weight:600;font-size:11px;
+  letter-spacing:0.04em;text-transform:uppercase;
+}
+.order-line-landscape-tag::before{
+  content:'';width:6px;height:6px;border-radius:50%;background:var(--terrain-lt);flex-shrink:0;
+}
+.cart-item-landscape{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:600;color:var(--terrain);
+  letter-spacing:0.03em;text-transform:uppercase;margin-top:2px;
+}
+.cart-item-landscape::before{
+  content:'';width:6px;height:6px;border-radius:50%;background:var(--terrain-lt);flex-shrink:0;
 }
 
 /* If the map toolbar gets too narrow, stack search and controls vertically rather than shrinking the search below ~250px. */

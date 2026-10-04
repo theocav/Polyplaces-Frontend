@@ -68,6 +68,7 @@
       <li><a href="/reviews/">Reviews</a></li>
       <li><a href="/contact/">Contact</a></li>
       <li><a href="/etsy/">Etsy</a></li>
+      <li><a href="/newsletter/">Newsletter</a></li>
       <li><a href="/store/" class="nav-cta btn">Customise yours &rarr;</a></li>
       <li><button type="button" class="nav-cart" id="cart-toggle" aria-label="Open cart" aria-expanded="false" aria-controls="cart-drawer">Cart <span id="cart-count">0</span></button></li>
     </ul>
@@ -160,8 +161,17 @@
                   <span class="frame-ctrl-val" id="zoom-val">1.0×</span>
                 </div>
               </div>
+              <div class="frame-ctrl-vsep" id="frame-ctrl-divider-landscape"></div>
+              <button type="button" id="landscape-toggle-btn" class="frame-rotate-btn landscape-toggle-btn" aria-pressed="false">
+                <svg class="frame-ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="18" cy="6" r="2"/><path d="M2 20l6-9 4 5 3-4.5L22 20z"/></svg>
+                Landscape
+              </button>
             </div>
           </div>
+        </div>
+        <div class="landscape-banner" id="landscape-banner" aria-hidden="true">
+          <svg class="landscape-banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="18" cy="6" r="2"/><path d="M2 20l6-9 4 5 3-4.5L22 20z"/></svg>
+          <span><strong>Landscape mode</strong> - terrain only, buildings are not printed.</span>
         </div>
         <div class="map-hint-sentinel" id="map-hint-sentinel" aria-hidden="true"></div>
         <div class="map-hint" id="map-hint">Select a scale to place your frame</div>
@@ -175,6 +185,7 @@
           <input type="text" id="custom-location-label" class="order-label-input" placeholder="e.g. Where I grew up" maxlength="60" autocomplete="off"/>
         </div>
         <div class="order-line"><span class="order-line-label">Finish</span><span class="order-line-val">Matte white</span></div>
+        <div class="order-line" id="order-landscape-line" hidden><span class="order-line-label">Buildings</span><span class="order-line-val"><span class="order-line-landscape-tag">Not included</span></span></div>
         <div class="order-divider"></div>
         <div class="order-total"><span class="label">Total</span><span class="price" id="order-price">&mdash;</span></div>
         <div class="order-status" id="order-status-msg">Choose a scale on the left and drag the frame to your chosen location.</div>

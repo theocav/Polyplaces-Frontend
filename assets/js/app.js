@@ -504,12 +504,14 @@ function selectProduct(product) {
   // Reset frame controls for the new product.
   frameRotation = 0;
   frameZoom = 1.0;
+  landscapeMode = false;
   const rotBtn = document.getElementById('rotation-btn');
   const zoomSlider = document.getElementById('zoom-slider');
   const zoomVal = document.getElementById('zoom-val');
   if (rotBtn) rotBtn.setAttribute('aria-pressed', 'false');
   if (zoomSlider) zoomSlider.value = '1';
   if (zoomVal) zoomVal.textContent = '1.0\u00D7';
+  applyLandscapeUI();
 
   // Disable rotate button for square products and custom sizes.
   const isSquare = Math.abs((Number(product.aspectRatio) || 1) - 1) < 0.01;
@@ -888,9 +890,39 @@ let selectionMeta = null;
 let cart = [];
 let cartPreviewMaps = new Map();
 let frameRotation = 0;   // degrees 0-359
-let frameZoom = 1.0;     // 0.7-1.3 geographic scale factor
+let frameZoom = 1.0;     // 0.7-1.3 geographic scale factor (up to 10 in landscape mode)
 let frameCenter = null;  // { lat, lng } actual center of the frame
 let frameCorners = null; // [[lat,lng]×4] rotated corners currently drawn
+let landscapeMode = false; // true = terrain-only piece (no buildings), wider zoom range unlocked
+
+const ZOOM_MAX_STANDARD = 1.3;
+const ZOOM_MAX_LANDSCAPE = 10;
+
+// Reflects landscapeMode into the toggle button, the map banner, the zoom
+// slider's range, and (on the store page) the order summary line.
+function applyLandscapeUI() {
+  const btn = document.getElementById('landscape-toggle-btn');
+  const banner = document.getElementById('landscape-banner');
+  const zoomSlider = document.getElementById('zoom-slider');
+  const zoomVal = document.getElementById('zoom-val');
+  const orderLine = document.getElementById('order-landscape-line');
+
+  if (btn) btn.setAttribute('aria-pressed', landscapeMode ? 'true' : 'false');
+  if (banner) {
+    banner.classList.toggle('is-visible', landscapeMode);
+    banner.setAttribute('aria-hidden', landscapeMode ? 'false' : 'true');
+  }
+  if (orderLine) orderLine.hidden = !landscapeMode;
+
+  if (zoomSlider) {
+    zoomSlider.max = String(landscapeMode ? ZOOM_MAX_LANDSCAPE : ZOOM_MAX_STANDARD);
+    if (!landscapeMode && frameZoom > ZOOM_MAX_STANDARD) {
+      frameZoom = ZOOM_MAX_STANDARD;
+      zoomSlider.value = String(frameZoom);
+    }
+    if (zoomVal) zoomVal.textContent = `${frameZoom.toFixed(1)}×`;
+  }
+}
 
 function initMap() {
   const ukBounds = L.latLngBounds([49.8, -8.7], [60.9, 1.9]);
@@ -1332,6 +1364,7 @@ function clearFrame() {
   frameCorners = null;
   frameRotation = 0;
   frameZoom = 1.0;
+  landscapeMode = false;
   selectionMeta = null;
   selectedFrame = null;
   const _frameLine = document.getElementById('order-frame-line');
@@ -1342,6 +1375,7 @@ function clearFrame() {
   if (zoomSlider) zoomSlider.value = '1';
   const zoomVal = document.getElementById('zoom-val');
   if (zoomVal) zoomVal.textContent = '1.0\u00D7';
+  applyLandscapeUI();
   const frameControlsEl = document.getElementById('frame-controls');
   if (frameControlsEl) frameControlsEl.hidden = true;
   document.getElementById('sel-run').disabled = true;
@@ -1377,6 +1411,7 @@ function updateLocationDisplay() {
     bbox,
     rotation: frameRotation,
     zoom: frameZoom,
+    landscape: landscapeMode,
     locationText: null,
   };
   const btn = document.getElementById('sel-run');
@@ -1446,10 +1481,12 @@ function renderCart() {
       ? `<div class="cart-item-meta cart-item-custom-label">${escapeHtml(item.customLabel)}</div><div class="cart-item-geo">${escapeHtml(item.location)}</div>`
       : `<div class="cart-item-meta">${escapeHtml(item.location)}</div>`;
     const frameLine = item.frame ? `<div class="cart-item-frame">${escapeHtml(item.frameName || 'With frame')}</div>` : '';
+    const landscapeLine = item.landscape ? '<div class="cart-item-landscape">Landscape &middot; no buildings</div>' : '';
     itemEl.innerHTML = `
       <div class="cart-item-preview" data-item-id="${escapeHtml(item.id)}"></div>
       <div class="cart-item-title">${escapeHtml(item.name)}</div>
       ${frameLine}
+      ${landscapeLine}
       ${labelLine}
       <div class="cart-item-row">
         <div class="cart-item-price">${formatPrice(item.price)}</div>
@@ -1508,6 +1545,7 @@ function addSelectionToCart() {
     center: selectionMeta.center,
     rotation: selectionMeta.rotation || 0,
     zoom: selectionMeta.zoom || 1,
+    landscape: !!selectionMeta.landscape,
     frame: hasFrame,
     framePriceId: hasFrame ? selectedFrameData.priceId : null,
     frameProductId: hasFrame ? (selectedFrameData.productId || null) : null,
@@ -1654,6 +1692,7 @@ async function checkoutCart() {
             center: item.center,
             rotation: item.rotation,
             zoom: item.zoom,
+            landscape: !!item.landscape,
             location: item.location,
             customLabel: item.customLabel,
             // v2 shape once the frame's productId is known; the backend still accepts
@@ -1908,6 +1947,19 @@ function initFrameControls() {
     zoomSlider.addEventListener('input', () => {
       frameZoom = Number(zoomSlider.value);
       if (zoomVal) zoomVal.textContent = `${frameZoom.toFixed(1)}\u00D7`;
+      if (frameCenter && selectedProduct) {
+        resetReviewState();
+        redrawFrame();
+        updateLocationDisplay();
+      }
+    });
+  }
+
+  const landscapeBtn = document.getElementById('landscape-toggle-btn');
+  if (landscapeBtn) {
+    landscapeBtn.addEventListener('click', () => {
+      landscapeMode = !landscapeMode;
+      applyLandscapeUI();
       if (frameCenter && selectedProduct) {
         resetReviewState();
         redrawFrame();
