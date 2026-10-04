@@ -906,16 +906,6 @@ function applyLandscapeUI() {
   const zoomVal = document.getElementById('zoom-val');
   const orderLine = document.getElementById('order-landscape-line');
 
-  // The page-wide earthy green theme hangs off this class (see styles.css).
-  // .theme-shifting briefly turns on colour transitions so the swap eases in.
-  const root = document.documentElement;
-  if (root.classList.contains('is-landscape') !== landscapeMode) {
-    root.classList.add('theme-shifting');
-    root.classList.toggle('is-landscape', landscapeMode);
-    clearTimeout(applyLandscapeUI._shiftTimer);
-    applyLandscapeUI._shiftTimer = setTimeout(() => root.classList.remove('theme-shifting'), 700);
-  }
-
   if (btn) btn.setAttribute('aria-pressed', landscapeMode ? 'true' : 'false');
   if (banner) {
     banner.classList.toggle('is-visible', landscapeMode);
@@ -932,13 +922,6 @@ function applyLandscapeUI() {
     if (zoomVal) zoomVal.textContent = `${frameZoom.toFixed(1)}×`;
     syncZoomFill();
   }
-
-  if (bboxLayer) bboxLayer.setStyle({ color: frameColor(), fillColor: frameColor() });
-}
-
-// Leaflet paints the frame with literal colours, so read the live theme accent.
-function frameColor() {
-  return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#c94f2c';
 }
 
 // The slider track is filled up to the thumb via a CSS custom property.
@@ -981,7 +964,7 @@ function initMap() {
 
   const hIcon = L.divIcon({
     className: '',
-    html: `<div style="width:28px;height:28px;border-radius:50%;background:white;border:2.5px solid var(--accent);color:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);cursor:grab;transition:border-color 0.5s,color 0.5s"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M2 12h20"/></svg></div>`,
+    html: `<div style="width:28px;height:28px;border-radius:50%;background:white;border:2.5px solid #c94f2c;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);cursor:grab"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c94f2c" stroke-width="2.5"><path d="M12 2v20M2 12h20"/></svg></div>`,
     iconSize: [28, 28],
     iconAnchor: [14, 14],
   });
@@ -1345,9 +1328,9 @@ function redrawFrame() {
     bboxLayer.setLatLngs(corners);
   } else {
     bboxLayer = L.polygon(corners, {
-      color: frameColor(),
+      color: '#c94f2c',
       weight: 2,
-      fillColor: frameColor(),
+      fillColor: '#c94f2c',
       fillOpacity: 0.05,
       dashArray: '6 4',
     }).addTo(map);
