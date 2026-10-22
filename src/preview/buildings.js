@@ -33,6 +33,15 @@ export function resolveMinHeight(props, profile) {
   return 0;
 }
 
+// Mean of the middle half of the values (lowest and highest quarters dropped).
+export function interquartileMean(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const cut = Math.floor(sorted.length / 4);
+  const mid = sorted.slice(cut, sorted.length - cut);
+  return mid.reduce((a, v) => a + v, 0) / mid.length;
+}
+
 // Uniform grid over bounding boxes, for candidate pairs.
 function bucketIndex(items, cell) {
   const grid = new Map();
@@ -106,7 +115,7 @@ export function buildFootprints(building, buildingPart, sampleZ, profile, onWarn
   // Outline suppression: a building mostly covered by parts is drawn by them.
   const parts = items.filter((it) => it.isPart);
   const partIndex = bucketIndex(parts, 50);
-  const out = [];
+  const kept = [];
   items.forEach((it, i) => {
     if (!keep[i]) return;
     if (!it.isPart && parts.length && it.area > 0) {
@@ -121,15 +130,25 @@ export function buildFootprints(building, buildingPart, sampleZ, profile, onWarn
         } catch { /* keep the outline */ }
       }
     }
-    const { height, provided } = resolveHeight(it.props, profile);
+    kept.push({ it, ...resolveHeight(it.props, profile) });
+  });
+
+  // Buildings without a height take the interquartile mean of the known
+  // heights in this scene, so they sit at a typical height for the area
+  // rather than a flat 8 m. With no known heights the default stays.
+  const fallback = interquartileMean(kept.filter((k) => k.provided && k.height > 0).map((k) => k.height));
+
+  const out = [];
+  for (const { it, height: tagged, provided } of kept) {
+    const height = provided || fallback == null ? tagged : fallback;
     const minHeight = resolveMinHeight(it.props, profile);
     const [rx, ry] = representativePoint(it.geom);
     const baseZ = sampleZ(rx, ry);
     const zBottom = baseZ + minHeight - profile.buildingSinkM;
     const zTop = baseZ + minHeight + height;
-    if (!(zTop > zBottom) || height <= 0 || it.area < 1e-10) return;
+    if (!(zTop > zBottom) || height <= 0 || it.area < 1e-10) continue;
     out.push({ geom: it.geom, zBottom, zTop, heightProvided: provided, area: it.area });
-  });
+  }
 
   if (out.length > profile.maxBuildings) {
     onWarning?.('max_buildings', `Showing the largest ${profile.maxBuildings} of ${out.length} buildings.`);
