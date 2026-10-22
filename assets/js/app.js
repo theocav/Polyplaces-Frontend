@@ -2409,7 +2409,9 @@ async function reviewSelection() {
 // ── 3D preview before add to cart ──────────────────────────────────────────────
 // Add to cart first asks whether the visitor wants a 3D preview of the framed
 // area. The preview bundle (three.js + compute worker) loads only on a yes.
+// Matches the preview's own limits: landscape (terrain only) can go wider.
 const PREVIEW_MAX_DEG = 0.1;
+const PREVIEW_MAX_DEG_LANDSCAPE = 0.25;
 const PREVIEW_STAGE_LABELS = {
   terrain: 'Shaping the terrain',
   buildings: 'Raising the buildings',
@@ -2427,8 +2429,9 @@ function offerPreview() {
   if (!selectedProduct || !bbox || !selectionMeta) return;
   const b = selectionMeta.bbox;
   const box = [b.south, b.west, b.north, b.east];
-  // Very wide landscape frames are past what the browser preview can build.
-  if (box[2] - box[0] > PREVIEW_MAX_DEG || box[3] - box[1] > PREVIEW_MAX_DEG) {
+  // Frames past what the browser preview can build go straight to the cart.
+  const maxDeg = selectionMeta.landscape ? PREVIEW_MAX_DEG_LANDSCAPE : PREVIEW_MAX_DEG;
+  if (box[2] - box[0] > maxDeg || box[3] - box[1] > maxDeg) {
     reviewSelection();
     return;
   }
@@ -2483,7 +2486,7 @@ function openPreviewDialog(box, landscape) {
   overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(); });
   overlay.querySelector('[data-pv="skip"]').onclick = addToCart;
   overlay.querySelector('[data-pv="show"]').onclick = () => showPreview();
-  setTimeout(() => overlay.querySelector('[data-pv="show"]').focus(), 60);
+  setTimeout(() => overlay.querySelector('[data-pv="show"]')?.focus(), 60);
 
   function showPreview() {
     card.classList.add('pv-card-wide');

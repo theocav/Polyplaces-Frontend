@@ -30,9 +30,10 @@ async function rateLimited(env, request) {
   return !success;
 }
 
-// B4.1 Mapterhorn passthrough, z15 only.
+// B4.1 Mapterhorn passthrough. z15 per spec, plus z10-14 which wide
+// landscape previews use.
 async function tiles(request, ctx, z, x, y) {
-  if (z !== '15') return empty(400, request);
+  if (!(Number(z) >= 10 && Number(z) <= 15)) return empty(400, request);
   const cache = caches.default;
   const key = new Request(new URL(request.url).origin + `/api/tiles/${z}/${x}/${y}.webp`);
   const hit = await cache.match(key);

@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { PROFILE, validateBbox } from './config.js';
+import { PROFILE, validateBbox, maxPreviewDegrees } from './config.js';
 
 /* global __PREVIEW_WORKER_URL__ */
 const WORKER_URL = typeof __PREVIEW_WORKER_URL__ !== 'undefined' ? __PREVIEW_WORKER_URL__ : './preview-worker.js';
@@ -54,7 +54,7 @@ export function createPreview(container, opts) {
     if (worker) { worker.terminate(); worker = null; }
   }
 
-  if (!validateBbox(bbox, PROFILE.maxBboxDegrees)) {
+  if (!validateBbox(bbox, maxPreviewDegrees(config.includeBuildings))) {
     queueMicrotask(() => fail('bad_bbox', 'This area is too large to preview.'));
     return { dispose() { disposed = true; } };
   }

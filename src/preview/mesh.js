@@ -5,6 +5,7 @@
 import earcut from 'earcut';
 import pc from 'polygon-clipping';
 import { flattenPolygon, multiBounds } from './geo.js';
+import { terrainMmPerM } from './config.js';
 
 const BORDER_EPS = 1e-6;
 
@@ -43,7 +44,8 @@ function waterBodies(water, sampleZ, profile) {
     let shore = Infinity;
     for (const [x, y] of poly[0]) shore = Math.min(shore, sampleZ(x, y));
     if (!Number.isFinite(shore)) shore = 10;
-    const floorZ = Math.max(shore - profile.waterFloorDrop, -profile.groundThickness + 0.01);
+    const drop = profile.waterFloorDrop * terrainMmPerM(profile);
+    const floorZ = Math.max(shore - drop, -profile.baseMinMm + 0.01);
     return { poly, floorZ };
   });
 }
@@ -273,7 +275,7 @@ function buildWater(bodies, plane, rect) {
 // the water floor where the edge runs through water, and a flat bottom.
 function buildBase(grid, bodies, rect, profile) {
   const { nx, ny, xs, ys, z } = grid;
-  const bottom = -profile.groundThickness;
+  const bottom = -profile.baseMinMm;
   const base = new Soup();
   const edges = [
     { nodes: xs, zs: Array.from(xs, (_, i) => z[i]), fixed: rect.ymin, axis: 'x' },
@@ -370,13 +372,14 @@ export function buildMeshes({ grid, water, footprints, sampleZ, frame, profile, 
   onProgress?.(0.9);
 
   const layers = { terrain: land, base, buildings, waterFloor: floor, waterWalls: walls };
+  // z is already in preview mm (terrain and building scales applied upstream).
   let zmax = -Infinity;
-  const zmin = -profile.groundThickness;
+  const zmin = -profile.baseMinMm;
   for (const soup of Object.values(layers)) {
     for (let k = 2; k < soup.p.length; k += 3) if (soup.p[k] > zmax) zmax = soup.p[k];
   }
   const zRange = zmax - zmin;
-  const zs = zRange > 0 ? profile.stlTargetHeightMm / zRange : 1;
+  const zs = 1;
   const xy = profile.stlXyScale;
 
   const out = {};

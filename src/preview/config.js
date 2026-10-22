@@ -41,6 +41,9 @@ export const PROFILE = {
   buildingZoom: 14,
   waterZoom: 13,
   maxBboxDegrees: 0.1,
+  // Landscape previews carry no buildings, so they can cover a wider area;
+  // the elevation zoom drops to suit the coarser grid (terrain.js).
+  maxLandscapeBboxDegrees: 0.25,
   timeoutMs: 120000,
   waterTriangleBudget: 250000,
 
@@ -53,7 +56,35 @@ export const PROFILE = {
   waterFloorDrop: 1.5,
   stlTargetHeightMm: 25.0,
   stlXyScale: 0.25,
+
+  // Preview proportions, in place of Part A's fixed 0.25 mm/m and 25 mm stack
+  // (where a 100 m base plate, ~19 mm, dwarfed ~6 mm of terrain, and wide
+  // frames came out metres across so any relief vanished). Every preview is
+  // scaled so its longer side is previewSpanMm; terrain relief is stretched
+  // to the old base thickness and the base cut to a tenth of it. Buildings
+  // keep the old stack's height-to-width ratio (25/130 mm per m against
+  // 0.25 mm/m), scaled with the footprint.
+  previewSpanMm: 150,
+  terrainReliefMm: 19.2,
+  baseMinMm: 1.92,
+  buildingToXyRatio: (25 / 130) / 0.25,
 };
+
+// Per-frame profile: horizontal and building scales for this footprint.
+export function frameProfile(profile, rect) {
+  const span = Math.max(rect.xmax - rect.xmin, rect.ymax - rect.ymin);
+  const xy = profile.previewSpanMm / span;
+  return { ...profile, stlXyScale: xy, buildingMmPerM: xy * profile.buildingToXyRatio };
+}
+
+// Millimetres of preview height per metre of normalised terrain.
+export function terrainMmPerM(profile) {
+  return profile.terrainReliefMm / (profile.terrainFixedHeightM * profile.terrainExaggeration);
+}
+
+export function maxPreviewDegrees(includeBuildings, profile = PROFILE) {
+  return includeBuildings === false ? profile.maxLandscapeBboxDegrees : profile.maxBboxDegrees;
+}
 
 export function validateBbox(bbox, maxDeg = PROFILE.maxBboxDegrees) {
   if (!Array.isArray(bbox) || bbox.length !== 4) return false;

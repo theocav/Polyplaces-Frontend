@@ -2,7 +2,7 @@
 // Message in:  { type: 'run', bbox, config }
 // Messages out: progress | warning | error | ready
 
-import { PROFILE, DEFAULT_CLIENT_CONFIG, validateBbox } from './config.js';
+import { PROFILE, DEFAULT_CLIENT_CONFIG, validateBbox, maxPreviewDegrees, terrainMmPerM, frameProfile } from './config.js';
 import { makeFrame } from './geo.js';
 import { buildTerrain, makeSampler } from './terrain.js';
 import { ingestOverture, checkTileBudget, PreviewError } from './overture.js';
@@ -20,11 +20,11 @@ const warning = (code, message) => {
 
 async function run(bbox, overrides) {
   const config = { ...DEFAULT_CLIENT_CONFIG, ...overrides };
-  const profile = PROFILE;
-  if (!validateBbox(bbox, profile.maxBboxDegrees)) {
+  if (!validateBbox(bbox, maxPreviewDegrees(config.includeBuildings, PROFILE))) {
     throw new PreviewError('bad_bbox', 'This area is too large or invalid to preview.');
   }
   const frame = makeFrame(bbox);
+  const profile = frameProfile(PROFILE, frame.rect);
   checkTileBudget(frame, profile, config.includeBuildings);
 
   const hooks = { onWarning: warning };
@@ -32,6 +32,9 @@ async function run(bbox, overrides) {
     buildTerrain(frame, profile, config, { ...hooks, onProgress: (p) => progress('terrain', p) }),
     ingestOverture(frame, profile, config, { ...hooks, onProgress: progress }),
   ]);
+  // From here on terrain z is preview millimetres, not normalised metres.
+  const kt = terrainMmPerM(profile);
+  for (let i = 0; i < grid.z.length; i++) grid.z[i] *= kt;
   const sampleZ = makeSampler(grid);
 
   progress('footprints', 0);

@@ -104,7 +104,13 @@ export async function buildTerrain(frame, profile, config, { onProgress, onWarni
   const { nx, ny } = terrainGridSize(rect, profile);
   const xs = linspace(rect.xmin, rect.xmax, nx);
   const ys = linspace(rect.ymin, rect.ymax, ny);
-  const z = profile.mapterhornZoom;
+  // Part A samples z15 (~1.5 m/px). Wide landscape grids are far coarser
+  // than that, so step down while a zoom still gives 4+ pixels per grid cell;
+  // standard 10 m grids stay at z15. Keeps a 0.25 degree box to a few tiles.
+  const step = Math.min((rect.xmax - rect.xmin) / (nx - 1), (rect.ymax - rect.ymin) / (ny - 1));
+  const mPerPx = (zz) => (40075016.686 * Math.cos((frame.originLat * Math.PI) / 180)) / (2 ** zz * TILE_PX);
+  let z = profile.mapterhornZoom;
+  while (z > 10 && mPerPx(z - 1) <= step / 4) z--;
 
   const [w, s] = frame.toLonLat(xs[0], ys[0]);
   const [e, n] = frame.toLonLat(xs[nx - 1], ys[ny - 1]);

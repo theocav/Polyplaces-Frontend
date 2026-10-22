@@ -144,8 +144,10 @@ export function buildFootprints(building, buildingPart, sampleZ, profile, onWarn
     const minHeight = resolveMinHeight(it.props, profile);
     const [rx, ry] = representativePoint(it.geom);
     const baseZ = sampleZ(rx, ry);
-    const zBottom = baseZ + minHeight - profile.buildingSinkM;
-    const zTop = baseZ + minHeight + height;
+    // baseZ is already preview mm; building metres use their own scale.
+    const kb = profile.buildingMmPerM;
+    const zBottom = Math.max(baseZ + (minHeight - profile.buildingSinkM) * kb, -profile.baseMinMm);
+    const zTop = baseZ + (minHeight + height) * kb;
     if (!(zTop > zBottom) || height <= 0 || it.area < 1e-10) continue;
     out.push({ geom: it.geom, zBottom, zTop, heightProvided: provided, area: it.area });
   }
