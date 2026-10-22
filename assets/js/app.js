@@ -15,8 +15,6 @@ const _CONFIG_API_BASE = String(
 // Runtime config — overwritten by fetchRemoteConfig(); sane defaults until then
 let apiBase = _CONFIG_API_BASE;
 let NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search';
-let SEARCH_COUNTRY_CODES = 'gb';
-let SEARCH_VIEWBOX = '-8.7,60.9,1.9,49.8';
 
 // Fetch all config (including secrets) from backend. Non-blocking — defaults above
 // cover the window between page load and fetch completion.
@@ -30,8 +28,6 @@ const _configReady = (async () => {
       const cfg = await res.json();
       if (cfg.POLYPLACES_API_BASE_URL) apiBase = String(cfg.POLYPLACES_API_BASE_URL).replace(/\/$/, '');
       if (cfg.POLYPLACES_NOMINATIM_URL) NOMINATIM_SEARCH_URL = String(cfg.POLYPLACES_NOMINATIM_URL).replace(/\/$/, '');
-      if (cfg.POLYPLACES_SEARCH_COUNTRY_CODES) SEARCH_COUNTRY_CODES = cfg.POLYPLACES_SEARCH_COUNTRY_CODES;
-      if (cfg.POLYPLACES_SEARCH_VIEWBOX) SEARCH_VIEWBOX = cfg.POLYPLACES_SEARCH_VIEWBOX;
       if (cfg.SENTRY_DSN && typeof Sentry !== 'undefined') {
         Sentry.init({
           dsn: cfg.SENTRY_DSN,
@@ -800,9 +796,7 @@ function setupMapSearch() {
       url.searchParams.set('q', query);
       url.searchParams.set('limit', '6');
       url.searchParams.set('addressdetails', '1');
-      url.searchParams.set('countrycodes', SEARCH_COUNTRY_CODES);
-      url.searchParams.set('bounded', '1');
-      url.searchParams.set('viewbox', SEARCH_VIEWBOX);
+      // Worldwide on purpose: any place can be sculpted (delivery is UK only).
       const res = await fetch(url, {
         headers: { Accept: 'application/json' },
       });
@@ -893,10 +887,12 @@ let frameCenter = null;  // { lat, lng } actual center of the frame
 let frameCorners = null; // [[lat,lng]×4] rotated corners currently drawn
 
 function initMap() {
-  const ukBounds = L.latLngBounds([49.8, -8.7], [60.9, 1.9]);
+  // Any place on Earth can be framed; bounds only stop panning off the edge of
+  // the Web Mercator map (which ends near ±85° latitude). Opens on London.
+  const worldBounds = L.latLngBounds([-85, -180], [85, 180]);
   map = L.map('store-map', {
     zoomControl: false,
-    maxBounds: ukBounds,
+    maxBounds: worldBounds,
     maxBoundsViscosity: 1.0,
   }).setView([51.505, -0.09], 14);
   L.control.zoom({ position: 'topleft' }).addTo(map);
