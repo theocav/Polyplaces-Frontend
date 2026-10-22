@@ -15,8 +15,6 @@ const _CONFIG_API_BASE = String(
 // Runtime config — overwritten by fetchRemoteConfig(); sane defaults until then
 let apiBase = _CONFIG_API_BASE;
 let NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search';
-let SEARCH_COUNTRY_CODES = 'gb';
-let SEARCH_VIEWBOX = '-8.7,60.9,1.9,49.8';
 
 // Fetch all config (including secrets) from backend. Non-blocking — defaults above
 // cover the window between page load and fetch completion.
@@ -30,8 +28,6 @@ const _configReady = (async () => {
       const cfg = await res.json();
       if (cfg.POLYPLACES_API_BASE_URL) apiBase = String(cfg.POLYPLACES_API_BASE_URL).replace(/\/$/, '');
       if (cfg.POLYPLACES_NOMINATIM_URL) NOMINATIM_SEARCH_URL = String(cfg.POLYPLACES_NOMINATIM_URL).replace(/\/$/, '');
-      if (cfg.POLYPLACES_SEARCH_COUNTRY_CODES) SEARCH_COUNTRY_CODES = cfg.POLYPLACES_SEARCH_COUNTRY_CODES;
-      if (cfg.POLYPLACES_SEARCH_VIEWBOX) SEARCH_VIEWBOX = cfg.POLYPLACES_SEARCH_VIEWBOX;
       if (cfg.SENTRY_DSN && typeof Sentry !== 'undefined') {
         Sentry.init({
           dsn: cfg.SENTRY_DSN,
@@ -82,7 +78,6 @@ const _PRODUCTS_CACHE_TTL = 300000; // 5 minutes
 const _SNAPSHOT_URL = '/assets/data/products-snapshot.json';
 
 let storeInited = false;
-let _checkZoomOverlap = null; // set by initFrameControls, called by redrawFrame
 let products = [];
 let selectedProduct = null;
 let handleIcon = null;
@@ -182,7 +177,7 @@ async function getProductData(onUpdate) {
 const productMeta = {
   small:  { artSize: '20\u00D720cm', badge: 'Most popular' },
   a4:     { artSize: '20\u00D728cm', badge: 'Best for gifting' },
-  large:  { artSize: '40\u00D740cm', badge: null },
+  large:  { artSize: '32\u00D732cm', badge: null },
 };
 
 // Frame add-on options keyed by frameKey (small, medium, large, etc.).
@@ -501,15 +496,11 @@ function selectProduct(product) {
     if (activeFrameOpts) activeFrameOpts.hidden = false;
   }
 
-  // Reset frame controls for the new product.
+  // Rotation resets for the new product; landscape mode and zoom carry over.
   frameRotation = 0;
-  frameZoom = 1.0;
   const rotBtn = document.getElementById('rotation-btn');
-  const zoomSlider = document.getElementById('zoom-slider');
-  const zoomVal = document.getElementById('zoom-val');
   if (rotBtn) rotBtn.setAttribute('aria-pressed', 'false');
-  if (zoomSlider) zoomSlider.value = '1';
-  if (zoomVal) zoomVal.textContent = '1.0\u00D7';
+  applyLandscapeUI();
 
   // Disable rotate button for square products and custom sizes.
   const isSquare = Math.abs((Number(product.aspectRatio) || 1) - 1) < 0.01;
@@ -549,7 +540,7 @@ function selectProduct(product) {
   // Place (or morph) the frame immediately at the center of the current viewport.
   if (map && handleIcon) {
     const center = prevCenter || map.getCenter();
-    const nextBBox = computeBBoxForProduct(center, product);
+    const nextBBox = computeBBoxForProduct(center, product, frameZoom);
     if (nextBBox) {
       if (prevBBox && bboxLayer && handle) {
         animateBBoxTo(nextBBox, 420);
@@ -719,7 +710,7 @@ function setupMapSearch() {
     // After search, always center the frame on the new viewport center (if a product is selected).
     if (selectedProduct && map && handleIcon) {
       const center = map.getCenter();
-      const next = computeBBoxForProduct(center, selectedProduct);
+      const next = computeBBoxForProduct(center, selectedProduct, frameZoom);
       if (next) {
         if (bbox && bboxLayer && handle) {
           animateBBoxTo(next, 420);
@@ -800,9 +791,7 @@ function setupMapSearch() {
       url.searchParams.set('q', query);
       url.searchParams.set('limit', '6');
       url.searchParams.set('addressdetails', '1');
-      url.searchParams.set('countrycodes', SEARCH_COUNTRY_CODES);
-      url.searchParams.set('bounded', '1');
-      url.searchParams.set('viewbox', SEARCH_VIEWBOX);
+      // Worldwide on purpose: any place can be sculpted (delivery is UK only).
       const res = await fetch(url, {
         headers: { Accept: 'application/json' },
       });
@@ -888,17 +877,101 @@ let selectionMeta = null;
 let cart = [];
 let cartPreviewMaps = new Map();
 let frameRotation = 0;   // degrees 0-359
-let frameZoom = 1.0;     // 0.7-1.3 geographic scale factor
+let frameZoom = 1.0;     // geographic scale factor: 0.7-1.3, or 2-7 in landscape mode
 let frameCenter = null;  // { lat, lng } actual center of the frame
 let frameCorners = null; // [[lat,lng]×4] rotated corners currently drawn
+let landscapeMode = false; // true = terrain-only piece (no buildings), wider zoom range unlocked
+
+const ZOOM_STANDARD = { min: 0.7, max: 1.3, initial: 1.0 };
+// Landscape zoom really runs 2-7x, but the label reads 2-10x: the real value
+// is stretched linearly so the top of the slider shows as 10x.
+const ZOOM_LANDSCAPE = { min: 2, max: 7, displayMax: 10, initial: 4.5 };
+
+function zoomRange() {
+  return landscapeMode ? ZOOM_LANDSCAPE : ZOOM_STANDARD;
+}
+
+// Leaflet zoom below which the placed frame is cleared. Landscape frames run
+// to ~14km wide, so that mode lets the map pull back to a regional view.
+const MAP_MIN_ZOOM_STANDARD = 12;
+const MAP_MIN_ZOOM_LANDSCAPE = 9;
+
+function frameMinMapZoom() {
+  return landscapeMode ? MAP_MIN_ZOOM_LANDSCAPE : MAP_MIN_ZOOM_STANDARD;
+}
+
+function zoomLabel(zoom) {
+  if (!landscapeMode) return `${zoom.toFixed(1)}×`;
+  const { min, max, displayMax } = ZOOM_LANDSCAPE;
+  const shown = min + ((zoom - min) / (max - min)) * (displayMax - min);
+  return `${shown.toFixed(1)}×`;
+}
+
+// Sets frameZoom (clamped to the current mode's range) and syncs the slider.
+function setFrameZoom(zoom) {
+  const { min, max } = zoomRange();
+  frameZoom = Math.round(Math.min(max, Math.max(min, zoom)) * 10) / 10;
+  const zoomSlider = document.getElementById('zoom-slider');
+  const zoomVal = document.getElementById('zoom-val');
+  if (zoomSlider) {
+    zoomSlider.min = String(min);
+    zoomSlider.max = String(max);
+    zoomSlider.value = String(frameZoom);
+    syncZoomFill();
+  }
+  if (zoomVal) zoomVal.textContent = zoomLabel(frameZoom);
+}
+
+// Reflects landscapeMode into the toggle button, the map banner, the zoom
+// slider's range, and (on the store page) the order summary line.
+function applyLandscapeUI() {
+  const btn = document.getElementById('landscape-toggle-btn');
+  const banner = document.getElementById('landscape-banner');
+  const orderLine = document.getElementById('order-landscape-line');
+
+  if (btn) btn.setAttribute('aria-pressed', landscapeMode ? 'true' : 'false');
+  if (banner) {
+    banner.classList.toggle('is-visible', landscapeMode);
+    banner.setAttribute('aria-hidden', landscapeMode ? 'false' : 'true');
+  }
+  if (orderLine) orderLine.hidden = !landscapeMode;
+
+  setFrameZoom(frameZoom);
+}
+
+// The slider track is filled up to the thumb via a CSS custom property.
+function syncZoomFill() {
+  const zoomSlider = document.getElementById('zoom-slider');
+  if (!zoomSlider) return;
+  const min = Number(zoomSlider.min);
+  const max = Number(zoomSlider.max);
+  const pct = ((Number(zoomSlider.value) - min) / (max - min)) * 100;
+  zoomSlider.style.setProperty('--fill', `${Math.max(0, Math.min(100, pct))}%`);
+}
+
+// A homepage gallery piece links here with the place it shows attached, so the
+// map opens on that location rather than the default view. Anything off the
+// map or unparseable is ignored and the default stands.
+function readMapStart(worldBounds) {
+  const params = new URLSearchParams(window.location.search);
+  const lat = parseFloat(params.get('lat'));
+  const lng = parseFloat(params.get('lng'));
+  const z   = parseInt(params.get('z'), 10);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (!worldBounds.contains([lat, lng])) return null;
+  return { centre: [lat, lng], zoom: Number.isFinite(z) ? Math.min(Math.max(z, 12), 19) : 15 };
+}
 
 function initMap() {
-  const ukBounds = L.latLngBounds([49.8, -8.7], [60.9, 1.9]);
+  // Any place on Earth can be framed; bounds only stop panning off the edge of
+  // the Web Mercator map (which ends near ±85° latitude). Opens on London.
+  const worldBounds = L.latLngBounds([-85, -180], [85, 180]);
+  const start = readMapStart(worldBounds);
   map = L.map('store-map', {
     zoomControl: false,
-    maxBounds: ukBounds,
+    maxBounds: worldBounds,
     maxBoundsViscosity: 1.0,
-  }).setView([51.505, -0.09], 14);
+  }).setView(start ? start.centre : [51.505, -0.09], start ? start.zoom : 14);
   L.control.zoom({ position: 'topleft' }).addTo(map);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -915,14 +988,14 @@ function initMap() {
   handleIcon = hIcon;
   setupMapSearch();
 
-  document.getElementById('sel-run').onclick = reviewSelection;
+  document.getElementById('sel-run').onclick = offerPreview;
   document.getElementById('sel-clear').onclick = clearMap;
 
   // No map click handler: frame placement is driven by the scale selector only (see selectProduct).
 
   map.on('zoomend', () => {
     if (!bbox) return;
-    if (map.getZoom() < 12) {
+    if (map.getZoom() < frameMinMapZoom()) {
       clearFrame();
       document.getElementById('map-hint').textContent =
         'Zoom back in to place your frame — selections clear below street level.';
@@ -1111,9 +1184,9 @@ function computeBBox(c) {
   return { south: c.lat - dLat, north: c.lat + dLat, west: c.lng - dLon, east: c.lng + dLon };
 }
 
-function computeBBoxForProduct(c, product) {
+function computeBBoxForProduct(c, product, zoom = 1) {
   if (!product) return null;
-  const width = Number(product.sizeCode);
+  const width = Number(product.sizeCode) * zoom;
   if (!Number.isFinite(width)) return null;
   const ratio = Number(product.aspectRatio);
   const aspectRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
@@ -1252,7 +1325,6 @@ function createBBox(c, icon) {
   if (frameControlsEl && frameControlsEl.hidden) {
     frameControlsEl.hidden = false;
     frameControlsEl.removeAttribute('hidden');
-    if (_checkZoomOverlap) _checkZoomOverlap();
   }
 
   redrawFrame();
@@ -1301,7 +1373,6 @@ function redrawFrame() {
   const frameControlsEl = document.getElementById('frame-controls');
   if (frameControlsEl && frameControlsEl.hidden) {
     frameControlsEl.hidden = false;
-    if (_checkZoomOverlap) _checkZoomOverlap();
   }
 }
 
@@ -1331,17 +1402,15 @@ function clearFrame() {
   frameCenter = null;
   frameCorners = null;
   frameRotation = 0;
-  frameZoom = 1.0;
+  frameZoom = ZOOM_STANDARD.initial;
+  landscapeMode = false;
   selectionMeta = null;
   selectedFrame = null;
   const _frameLine = document.getElementById('order-frame-line');
   if (_frameLine) _frameLine.hidden = true;
   const rotBtn = document.getElementById('rotation-btn');
-  const zoomSlider = document.getElementById('zoom-slider');
   if (rotBtn) rotBtn.setAttribute('aria-pressed', 'false');
-  if (zoomSlider) zoomSlider.value = '1';
-  const zoomVal = document.getElementById('zoom-val');
-  if (zoomVal) zoomVal.textContent = '1.0\u00D7';
+  applyLandscapeUI();
   const frameControlsEl = document.getElementById('frame-controls');
   if (frameControlsEl) frameControlsEl.hidden = true;
   document.getElementById('sel-run').disabled = true;
@@ -1377,6 +1446,7 @@ function updateLocationDisplay() {
     bbox,
     rotation: frameRotation,
     zoom: frameZoom,
+    landscape: landscapeMode,
     locationText: null,
   };
   const btn = document.getElementById('sel-run');
@@ -1446,10 +1516,12 @@ function renderCart() {
       ? `<div class="cart-item-meta cart-item-custom-label">${escapeHtml(item.customLabel)}</div><div class="cart-item-geo">${escapeHtml(item.location)}</div>`
       : `<div class="cart-item-meta">${escapeHtml(item.location)}</div>`;
     const frameLine = item.frame ? `<div class="cart-item-frame">${escapeHtml(item.frameName || 'With frame')}</div>` : '';
+    const landscapeLine = item.landscape ? '<div class="cart-item-landscape">Landscape &middot; no buildings</div>' : '';
     itemEl.innerHTML = `
       <div class="cart-item-preview" data-item-id="${escapeHtml(item.id)}"></div>
       <div class="cart-item-title">${escapeHtml(item.name)}</div>
       ${frameLine}
+      ${landscapeLine}
       ${labelLine}
       <div class="cart-item-row">
         <div class="cart-item-price">${formatPrice(item.price)}</div>
@@ -1508,6 +1580,7 @@ function addSelectionToCart() {
     center: selectionMeta.center,
     rotation: selectionMeta.rotation || 0,
     zoom: selectionMeta.zoom || 1,
+    landscape: !!selectionMeta.landscape,
     frame: hasFrame,
     framePriceId: hasFrame ? selectedFrameData.priceId : null,
     frameProductId: hasFrame ? (selectedFrameData.productId || null) : null,
@@ -1654,6 +1727,7 @@ async function checkoutCart() {
             center: item.center,
             rotation: item.rotation,
             zoom: item.zoom,
+            landscape: !!item.landscape,
             location: item.location,
             customLabel: item.customLabel,
             // v2 shape once the frame's productId is known; the backend still accepts
@@ -1710,6 +1784,48 @@ async function loadHomepagePrices() {
     if (typeof Sentry !== 'undefined') Sentry.captureException(err);
     console.error('[Polyplaces] Failed to load homepage prices:', err);
   }
+}
+
+// Homepage gallery - one featured piece with a thumbnail strip. Each thumb
+// carries the place it shows, so "Make this place yours" opens the store map
+// on that location at the size the piece was made in.
+function initGallery() {
+  const gallery = document.getElementById('gallery');
+  if (!gallery) return;
+
+  const photo   = document.getElementById('gallery-photo');
+  const place   = document.getElementById('gallery-place');
+  const note    = document.getElementById('gallery-note');
+  const eyebrow = document.getElementById('gallery-eyebrow');
+  const cta     = document.getElementById('gallery-cta');
+  const thumbs  = Array.from(gallery.querySelectorAll('.gallery-thumb'));
+
+  const show = (thumb) => {
+    const d = thumb.dataset;
+    photo.src = d.photo;
+    photo.alt = d.alt;
+    place.textContent   = d.place;
+    note.innerHTML      = d.note;
+    eyebrow.innerHTML   = d.eyebrow;
+    cta.href = `/store/?scale=${encodeURIComponent(d.scale)}&lat=${encodeURIComponent(d.lat)}&lng=${encodeURIComponent(d.lng)}&z=${encodeURIComponent(d.z)}`;
+    cta.setAttribute('aria-label', `Make ${d.place} yours`);
+    thumbs.forEach((t) => {
+      t.setAttribute('aria-selected', String(t === thumb));
+      t.classList.toggle('is-active', t === thumb);
+    });
+  };
+
+  thumbs.forEach((thumb, i) => {
+    thumb.addEventListener('click', () => show(thumb));
+    // Left/right arrows move along the strip, as a tablist should.
+    thumb.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const next = thumbs[(i + (e.key === 'ArrowRight' ? 1 : thumbs.length - 1)) % thumbs.length];
+      next.focus();
+      show(next);
+    });
+  });
 }
 
 function initNavUI() {
@@ -1887,9 +2003,6 @@ function initCustomSizePanel() {
 function initFrameControls() {
   const rotBtn = document.getElementById('rotation-btn');
   const zoomSlider = document.getElementById('zoom-slider');
-  const zoomVal = document.getElementById('zoom-val');
-  const controlsEl = document.getElementById('frame-controls');
-  const zoomToggleBtn = document.getElementById('zoom-toggle-btn');
 
   if (rotBtn) {
     rotBtn.addEventListener('click', () => {
@@ -1906,8 +2019,7 @@ function initFrameControls() {
 
   if (zoomSlider) {
     zoomSlider.addEventListener('input', () => {
-      frameZoom = Number(zoomSlider.value);
-      if (zoomVal) zoomVal.textContent = `${frameZoom.toFixed(1)}\u00D7`;
+      setFrameZoom(Number(zoomSlider.value));
       if (frameCenter && selectedProduct) {
         resetReviewState();
         redrawFrame();
@@ -1916,54 +2028,22 @@ function initFrameControls() {
     });
   }
 
-  // Collapse zoom into a toggle button when it would overlap the search bar
-  if (controlsEl && zoomToggleBtn) {
-    const searchEl = document.querySelector('.map-search');
-    const mapEl = document.querySelector('.config-map');
-    let _overlapLocked = false;
-
-    function checkZoomOverlap() {
-      if (_overlapLocked || controlsEl.hidden || !searchEl) return;
-      _overlapLocked = true;
-
-      // Temporarily uncollapse to measure the full-width controls accurately
-      const wasCollapsed = controlsEl.classList.contains('zoom-collapsed');
-      controlsEl.classList.remove('zoom-collapsed', 'zoom-open');
-
-      const searchRect = searchEl.getBoundingClientRect();
-      const controlsRect = controlsEl.getBoundingClientRect();
-      const overlapping = searchRect.right + 12 >= controlsRect.left;
-
-      if (overlapping) {
-        controlsEl.classList.add('zoom-collapsed');
-        if (wasCollapsed) {
-          // Restore open state only if the panel should remain open
-          // (don't re-open on map resize — just keep it closed)
+  const landscapeBtn = document.getElementById('landscape-toggle-btn');
+  if (landscapeBtn) {
+    landscapeBtn.addEventListener('click', () => {
+      landscapeMode = !landscapeMode;
+      // Each mode starts from its own default rather than a clamped leftover.
+      frameZoom = zoomRange().initial;
+      applyLandscapeUI();
+      if (frameCenter && selectedProduct) {
+        resetReviewState();
+        redrawFrame();
+        updateLocationDisplay();
+        // Leaving landscape while pulled back past street level would clear
+        // the frame on the next zoom, so bring the map in to it instead.
+        if (map && map.getZoom() < frameMinMapZoom()) {
+          map.setView([frameCenter.lat, frameCenter.lng], frameMinMapZoom());
         }
-      }
-      // else: already uncollapsed by classList.remove above
-
-      // Release lock after pending resize callbacks from our DOM changes have fired
-      requestAnimationFrame(() => { _overlapLocked = false; });
-    }
-
-    _checkZoomOverlap = checkZoomOverlap;
-
-    if (mapEl) {
-      const ro = new ResizeObserver(checkZoomOverlap);
-      ro.observe(mapEl);
-    }
-
-    zoomToggleBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = controlsEl.classList.toggle('zoom-open');
-      zoomToggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    });
-
-    document.addEventListener('click', (e) => {
-      if (controlsEl.classList.contains('zoom-open') && !controlsEl.contains(e.target)) {
-        controlsEl.classList.remove('zoom-open');
-        zoomToggleBtn.setAttribute('aria-expanded', 'false');
       }
     });
   }
@@ -1997,6 +2077,7 @@ initNavUI();
 showCheckoutBanner();
 if (document.getElementById('landing')) {
   loadHomepagePrices();
+  initGallery();
 }
 
 // Cookie consent — injected on every page so consent can be captured
@@ -2027,12 +2108,205 @@ if (document.getElementById('landing')) {
     localStorage.setItem('pp_cn', val);
     overlay.remove();
     document.body.style.overflow = '';
+    // The newsletter popup waits on this so the two never stack.
+    document.dispatchEvent(new CustomEvent('pp:consent'));
   };
   document.getElementById('cookie-accept').onclick = () => {
     dismiss('1');
     if (typeof window.ppLoadGA === 'function') window.ppLoadGA();
   };
   document.getElementById('cookie-reject').onclick = () => dismiss('0');
+}());
+
+// ── Newsletter popup ───────────────────────────────────────────────────────────
+// Offers 10% off in exchange for an email. Held back until the cookie banner is
+// out of the way, and suppressed for 7 days once it has been shown, whether
+// the visitor dismissed it or ignored it - or for good once they subscribe.
+(function () {
+  // MOCK: no /api/newsletter endpoint exists yet. Set this to the path once the
+  // backend is live and submit will POST for real instead of faking success.
+  const NEWSLETTER_ENDPOINT = null; // e.g. '/api/newsletter'
+  const STORE_KEY = 'pp_nl';
+  const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+  const SCROLL_TRIGGER = 0.55; // fraction of the page scrolled
+
+  // Not on the Etsy tool page - that is a bare utility, not a storefront.
+  if (/^\/etsy\//.test(location.pathname)) return;
+
+  const readState = () => {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || null; }
+    catch (e) { return null; }
+  };
+  const writeState = (state) => {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ state, at: Date.now() })); }
+    catch (e) { /* private mode - the popup simply reappears next visit */ }
+  };
+
+  // Any prior showing counts, dismissed or merely ignored - otherwise a
+  // refresh or a click through to another page just restarts the timer.
+  const saved = readState();
+  if (saved && saved.state === 'subscribed') return;
+  if (saved && Date.now() - saved.at < SNOOZE_MS) return;
+
+  let shown = false;
+  let overlay = null;
+  let lastFocused = null;
+
+  function close(reason) {
+    if (!overlay) return;
+    writeState(reason);
+    overlay.remove();
+    overlay = null;
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', onKeydown);
+    if (lastFocused && lastFocused.focus) lastFocused.focus();
+  }
+
+  function onKeydown(e) {
+    if (e.key === 'Escape') close('dismissed');
+  }
+
+  function open() {
+    if (shown || document.body.classList.contains('cart-open')) return;
+    shown = true;
+    // Stamped on open, so ignoring the popup snoozes it just like dismissing.
+    writeState('seen');
+    lastFocused = document.activeElement;
+
+    overlay = document.createElement('div');
+    overlay.className = 'nl-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'nl-title');
+    overlay.innerHTML =
+      '<div class="nl-card">' +
+        '<button type="button" class="nl-close" id="nl-close" aria-label="Close">&times;</button>' +
+        '<div class="nl-media">' +
+          '<img src="/assets/imgs/newsletter-studio.webp" width="1000" height="1242" decoding="async" ' +
+          'alt="A Polyplaces sculpture being finished by hand at the studio bench">' +
+        '</div>' +
+        '<div class="nl-body">' +
+          '<p class="nl-eyebrow">10% off your first piece</p>' +
+          '<h2 class="nl-title" id="nl-title">Hold the places you love</h2>' +
+          '<p class="nl-text">Leave your email and we&rsquo;ll send your discount code, plus the ' +
+          'occasional note from the studio. No spam, unsubscribe any time.</p>' +
+          '<form class="nl-form" id="nl-form" novalidate>' +
+            '<label class="sr-only" for="nl-email">Email address</label>' +
+            '<input type="email" id="nl-email" name="email" placeholder="you@example.com" autocomplete="email" required>' +
+            '<input type="text" id="nl-company" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="nl-hp">' +
+            '<div class="turnstile-field" data-turnstile="newsletter"></div>' +
+            '<button type="submit" class="nl-submit" id="nl-submit">Get my 10% off</button>' +
+          '</form>' +
+          '<p class="nl-status" id="nl-status" role="status"></p>' +
+          '<button type="button" class="nl-decline" id="nl-decline">No thanks</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKeydown);
+
+    const RENDERED_AT = Date.now();
+    const form   = overlay.querySelector('#nl-form');
+    const email  = overlay.querySelector('#nl-email');
+    const btn    = overlay.querySelector('#nl-submit');
+    const status = overlay.querySelector('#nl-status');
+
+    overlay.querySelector('#nl-close').onclick = () => close('dismissed');
+    overlay.querySelector('#nl-decline').onclick = () => close('dismissed');
+    overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close('dismissed'); });
+    setTimeout(() => email.focus(), 60);
+
+    // The modal is built on open, long after turnstile.js scanned the page.
+    if (typeof window.ppTurnstileRender === 'function') {
+      window.ppTurnstileRender(overlay.querySelector('[data-turnstile]'));
+    }
+
+    if (typeof window.ppTrackGA === 'function') window.ppTrackGA('newsletter_shown');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const value = email.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        status.textContent = 'Please enter a valid email address.';
+        status.className = 'nl-status nl-status-error';
+        email.focus();
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+      status.textContent = '';
+      status.className = 'nl-status';
+
+      const payload = {
+        email: value,
+        renderedAt: RENDERED_AT,
+        company: overlay.querySelector('#nl-company').value.trim(),
+        source: location.pathname,
+        turnstileToken: (typeof window.ppTurnstileToken === 'function')
+          ? window.ppTurnstileToken(form) : ''
+      };
+
+      const API_BASE = (
+        (window.__POLYPLACES_ENV__ && window.__POLYPLACES_ENV__.POLYPLACES_API_BASE_URL) ||
+        'https://api.polyplaces.co.uk'
+      ).replace(/\/$/, '');
+
+      const request = NEWSLETTER_ENDPOINT
+        ? fetch(API_BASE + NEWSLETTER_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }).then((res) => { if (!res.ok) throw new Error('server'); })
+        : new Promise((resolve) => setTimeout(resolve, 500)); // MOCK
+
+      request.then(() => {
+        if (typeof window.ppTrackGA === 'function') window.ppTrackGA('newsletter_signup');
+        if (typeof fbq === 'function') fbq('track', 'Lead', { content_name: 'Newsletter' });
+        writeState('subscribed');
+        overlay.querySelector('.nl-body').innerHTML =
+          '<p class="nl-eyebrow">You&rsquo;re in</p>' +
+          '<h2 class="nl-title">Check your inbox</h2>' +
+          '<p class="nl-text">Your 10% discount code is on its way to <strong>' + escapeHtml(value) + '</strong>. ' +
+          'It should land within a few minutes - have a look in spam if it doesn&rsquo;t.</p>' +
+          '<button type="button" class="nl-submit" id="nl-done">Start browsing</button>';
+        overlay.querySelector('#nl-done').onclick = () => close('subscribed');
+        overlay.querySelector('#nl-done').focus();
+      }).catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Get my 10% off';
+        status.textContent = 'Something went wrong - please try again shortly.';
+        status.className = 'nl-status nl-status-error';
+        // Tokens are single-use, so a retry without this always fails.
+        if (typeof window.ppTurnstileReset === 'function') window.ppTurnstileReset(form);
+      });
+    });
+  }
+
+  // Two intent-led triggers, no timer: the visitor has either read a good part
+  // of the page, or is on their way out. Neither interrupts what they came for.
+  function arm() {
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      if (max > 0 && window.scrollY / max > SCROLL_TRIGGER) fire();
+    };
+    // Exit intent: pointer leaving through the top of the window, towards the
+    // tabs or address bar. Desktop only - touch devices have no equivalent.
+    const onExit = (e) => {
+      if (e.clientY <= 0 && !window.matchMedia('(hover: none)').matches) fire();
+    };
+    const fire = () => {
+      window.removeEventListener('scroll', onScroll);
+      document.removeEventListener('mouseout', onExit);
+      open();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    document.addEventListener('mouseout', onExit);
+  }
+
+  // Wait for the cookie banner to be answered so the two never stack.
+  if (localStorage.getItem('pp_cn')) arm();
+  else document.addEventListener('pp:consent', arm, { once: true });
 }());
 
 if (document.getElementById('storePage')) {
@@ -2130,6 +2404,151 @@ async function reviewSelection() {
   btn.textContent = '\u2713 Added to cart';
   btn.disabled = false;
   openCart();
+}
+
+// ── 3D preview before add to cart ──────────────────────────────────────────────
+// Add to cart first asks whether the visitor wants a 3D preview of the framed
+// area. The preview bundle (three.js + compute worker) loads only on a yes.
+// Matches the preview's own limits: landscape (terrain only) can go wider.
+const PREVIEW_MAX_DEG = 0.1;
+const PREVIEW_MAX_DEG_LANDSCAPE = 0.25;
+const PREVIEW_STAGE_LABELS = {
+  terrain: 'Shaping the terrain',
+  buildings: 'Raising the buildings',
+  water: 'Finding the water',
+  footprints: 'Placing the buildings',
+  mesh: 'Carving the model',
+};
+
+function previewModuleUrl() {
+  const meta = document.querySelector('meta[name="preview-module"]');
+  return meta?.content || '/assets/js/preview/preview.js';
+}
+
+function offerPreview() {
+  if (!selectedProduct || !bbox || !selectionMeta) return;
+  const b = selectionMeta.bbox;
+  const box = [b.south, b.west, b.north, b.east];
+  // Frames past what the browser preview can build go straight to the cart.
+  const maxDeg = selectionMeta.landscape ? PREVIEW_MAX_DEG_LANDSCAPE : PREVIEW_MAX_DEG;
+  if (box[2] - box[0] > maxDeg || box[3] - box[1] > maxDeg) {
+    reviewSelection();
+    return;
+  }
+  openPreviewDialog(box, !!selectionMeta.landscape);
+}
+
+function openPreviewDialog(box, landscape) {
+  const lastFocused = document.activeElement;
+  let preview = null;
+  let releaseTrap = null;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'pv-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'pv-title');
+  overlay.innerHTML =
+    '<div class="pv-card" tabindex="-1">' +
+      '<button type="button" class="nl-close pv-close" aria-label="Close">&times;</button>' +
+      '<div class="pv-ask">' +
+        '<p class="nl-eyebrow">Before it goes in your cart</p>' +
+        '<h2 class="nl-title" id="pv-title">See your sculpture in 3D?</h2>' +
+        '<p class="nl-text">We can build a quick 3D preview of the area you framed - the terrain, ' +
+        (landscape ? '' : 'buildings ') + 'and water in the same proportions as the finished piece. ' +
+        'It usually takes 10-30 seconds.</p>' +
+        '<div class="pv-actions">' +
+          '<button type="button" class="nl-submit" data-pv="show">Show me a preview</button>' +
+          '<button type="button" class="nl-decline" data-pv="skip">No thanks, add to cart</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const card = overlay.querySelector('.pv-card');
+
+  function close() {
+    if (!overlay.isConnected) return;
+    preview?.dispose();
+    releaseTrap?.();
+    overlay.remove();
+    document.body.style.overflow = '';
+    if (lastFocused && lastFocused.focus) lastFocused.focus();
+  }
+
+  function addToCart() {
+    close();
+    reviewSelection();
+  }
+
+  releaseTrap = createFocusTrap(card, close);
+  overlay.querySelector('.pv-close').onclick = close;
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector('[data-pv="skip"]').onclick = addToCart;
+  overlay.querySelector('[data-pv="show"]').onclick = () => showPreview();
+  setTimeout(() => overlay.querySelector('[data-pv="show"]')?.focus(), 60);
+
+  function showPreview() {
+    card.classList.add('pv-card-wide');
+    card.querySelector('.pv-ask').outerHTML =
+      '<div class="pv-head">' +
+        '<h2 class="nl-title" id="pv-title">Your sculpture in 3D</h2>' +
+        '<p class="pv-sub">Drag to turn it, scroll or pinch to zoom. A guide to shape and scale - you&rsquo;ll still approve a proof before we make anything.</p>' +
+      '</div>' +
+      '<div class="pv-stage">' +
+        '<div class="pv-canvas" id="pv-canvas"></div>' +
+        '<div class="pv-loading" id="pv-loading" role="status" aria-live="polite">' +
+          '<span class="pv-loading-label" id="pv-loading-label">Gathering map data</span>' +
+          '<span class="pv-bar" aria-hidden="true"><span class="pv-bar-fill" id="pv-bar-fill"></span></span>' +
+        '</div>' +
+      '</div>' +
+      '<p class="pv-credit" id="pv-credit">Map data &copy; Overture Maps Foundation, &copy; OpenStreetMap contributors (ODbL). ' +
+        'Elevation &copy; Mapterhorn; UK LiDAR from the Environment Agency (Open Government Licence).</p>' +
+      '<div class="pv-actions pv-actions-row">' +
+        '<button type="button" class="nl-decline" data-pv="back">Back to the map</button>' +
+        '<button type="button" class="nl-submit" data-pv="add">Add to cart &rarr;</button>' +
+      '</div>';
+    card.querySelector('[data-pv="back"]').onclick = close;
+    card.querySelector('[data-pv="add"]').onclick = addToCart;
+    card.focus();
+
+    const loading = card.querySelector('#pv-loading');
+    const label = card.querySelector('#pv-loading-label');
+    const fill = card.querySelector('#pv-bar-fill');
+    const showError = (text) => {
+      loading.classList.add('pv-loading-error');
+      label.textContent = text;
+    };
+
+    if (typeof window.ppTrackGA === 'function') window.ppTrackGA('preview_open');
+
+    import(previewModuleUrl()).then((mod) => {
+      if (!overlay.isConnected) return;
+      preview = mod.createPreview(card.querySelector('#pv-canvas'), {
+        bbox: box,
+        config: { includeBuildings: !landscape },
+        onProgress(stage, value, overall) {
+          if (PREVIEW_STAGE_LABELS[stage]) label.textContent = PREVIEW_STAGE_LABELS[stage];
+          fill.style.width = `${Math.round(overall * 100)}%`;
+        },
+        onReady() {
+          loading.hidden = true;
+        },
+        onError(code) {
+          const messages = {
+            bad_bbox: 'This area is too large to preview.',
+            too_many_tiles: 'This area is too large to preview.',
+            no_webgl: 'Your browser can’t show 3D previews.',
+            timeout: 'The preview is taking too long - please try again later.',
+            oom: 'This area is too detailed to preview on this device.',
+          };
+          showError(messages[code] || 'The preview couldn’t be built just now.');
+        },
+      });
+    }).catch(() => {
+      if (overlay.isConnected) showError('The preview couldn’t be loaded just now.');
+    });
+  }
 }
 
 function resetReviewState() {

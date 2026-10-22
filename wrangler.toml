@@ -1,5 +1,17 @@
 name = "polyplaces-frontend"
 compatibility_date = "2025-01-01"
+main = "worker/index.js"
 
 [assets]
 directory = "."
+binding = "ASSETS"
+
+# Per-IP limit on the 3D preview data routes (/api/*). A full-size preview
+# makes ~200 requests, so this allows a few previews a minute.
+[[ratelimits]]
+name = "PREVIEW_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 600
+  period = 60

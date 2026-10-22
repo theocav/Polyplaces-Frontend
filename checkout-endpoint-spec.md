@@ -142,6 +142,7 @@ All optional, none affect price.
 | `bbox` | `frameBbox`, `bounds` | `metadata.bbox` / `metadata.bboxes` (`\|`-joined), serialized `south,west,north,east`. Non-finite values drop it silently |
 | `frameCoordinates` | `coordinates` | `metadata.frameCoordinates` / `metadata.frameCoordinatesList`. Strings pass through; objects are JSON-stringified |
 | `location` | `locationLabel`, `frameLocation` | Checkout-page note; also `product_data.metadata.location` on custom items |
+| `landscape` | — | **Fulfilment-affecting, must not be dropped.** `true` when the customer selected Landscape mode — terrain-only, no building meshes. See `landscape-mode-spec.md`. Should land in `metadata.landscape` (comma-joined item indices, like `metadata.framed`, or `"none"`) |
 
 Derived, always set: `metadata.framed` — comma-joined indices of framed items, or
 `"none"`.
@@ -336,3 +337,7 @@ silently dropping the frame.
   since `/api/products` already refuses to serve such products.
 - **`rotation`, `zoom`, `center` are discarded.** If fulfilment ever needs the
   exact render parameters, they must be added to metadata.
+- **`landscape` is new and not yet wired server-side.** Unlike `rotation`/`zoom`/
+  `center`, this one changes what gets fabricated (no building meshes) and must
+  be read into `metadata.landscape` rather than silently ignored. See
+  `landscape-mode-spec.md`.
