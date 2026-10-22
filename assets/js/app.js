@@ -15,8 +15,6 @@ const _CONFIG_API_BASE = String(
 // Runtime config — overwritten by fetchRemoteConfig(); sane defaults until then
 let apiBase = _CONFIG_API_BASE;
 let NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search';
-let SEARCH_COUNTRY_CODES = 'gb';
-let SEARCH_VIEWBOX = '-8.7,60.9,1.9,49.8';
 
 // Fetch all config (including secrets) from backend. Non-blocking — defaults above
 // cover the window between page load and fetch completion.
@@ -30,8 +28,6 @@ const _configReady = (async () => {
       const cfg = await res.json();
       if (cfg.POLYPLACES_API_BASE_URL) apiBase = String(cfg.POLYPLACES_API_BASE_URL).replace(/\/$/, '');
       if (cfg.POLYPLACES_NOMINATIM_URL) NOMINATIM_SEARCH_URL = String(cfg.POLYPLACES_NOMINATIM_URL).replace(/\/$/, '');
-      if (cfg.POLYPLACES_SEARCH_COUNTRY_CODES) SEARCH_COUNTRY_CODES = cfg.POLYPLACES_SEARCH_COUNTRY_CODES;
-      if (cfg.POLYPLACES_SEARCH_VIEWBOX) SEARCH_VIEWBOX = cfg.POLYPLACES_SEARCH_VIEWBOX;
       if (cfg.SENTRY_DSN && typeof Sentry !== 'undefined') {
         Sentry.init({
           dsn: cfg.SENTRY_DSN,
@@ -795,9 +791,7 @@ function setupMapSearch() {
       url.searchParams.set('q', query);
       url.searchParams.set('limit', '6');
       url.searchParams.set('addressdetails', '1');
-      url.searchParams.set('countrycodes', SEARCH_COUNTRY_CODES);
-      url.searchParams.set('bounded', '1');
-      url.searchParams.set('viewbox', SEARCH_VIEWBOX);
+      // Worldwide on purpose: any place can be sculpted (delivery is UK only).
       const res = await fetch(url, {
         headers: { Accept: 'application/json' },
       });
@@ -956,24 +950,26 @@ function syncZoomFill() {
 }
 
 // A homepage gallery piece links here with the place it shows attached, so the
-// map opens on that location rather than the default view. Anything outside the
-// UK bounds or unparseable is ignored and the default stands.
-function readMapStart(ukBounds) {
+// map opens on that location rather than the default view. Anything off the
+// map or unparseable is ignored and the default stands.
+function readMapStart(worldBounds) {
   const params = new URLSearchParams(window.location.search);
   const lat = parseFloat(params.get('lat'));
   const lng = parseFloat(params.get('lng'));
   const z   = parseInt(params.get('z'), 10);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  if (!ukBounds.contains([lat, lng])) return null;
+  if (!worldBounds.contains([lat, lng])) return null;
   return { centre: [lat, lng], zoom: Number.isFinite(z) ? Math.min(Math.max(z, 12), 19) : 15 };
 }
 
 function initMap() {
-  const ukBounds = L.latLngBounds([49.8, -8.7], [60.9, 1.9]);
-  const start = readMapStart(ukBounds);
+  // Any place on Earth can be framed; bounds only stop panning off the edge of
+  // the Web Mercator map (which ends near ±85° latitude). Opens on London.
+  const worldBounds = L.latLngBounds([-85, -180], [85, 180]);
+  const start = readMapStart(worldBounds);
   map = L.map('store-map', {
     zoomControl: false,
-    maxBounds: ukBounds,
+    maxBounds: worldBounds,
     maxBoundsViscosity: 1.0,
   }).setView(start ? start.centre : [51.505, -0.09], start ? start.zoom : 14);
   L.control.zoom({ position: 'topleft' }).addTo(map);

@@ -12,7 +12,7 @@ Two primary audiences: gift buyers purchasing a custom 3D map sculpture for some
 
 ## Product Purpose
 
-Polyplaces turns a chosen real-world UK location into a physical, tactile 3D topographic sculpture — customers pick an area and a scale, and the piece is sculpted to match that location's actual terrain.
+Polyplaces turns a chosen real-world location anywhere on Earth into a physical, tactile 3D topographic sculpture — customers pick an area and a scale, and the piece is sculpted to match that location's actual terrain.
 
 ## Positioning
 
@@ -28,7 +28,7 @@ The differentiator is topographic relief *alongside* real buildings in the same 
 
 ## Capabilities and Constraints
 
-- **UK-only fulfillment**: sculpts UK locations; scoped to UK customers/shipping.
+- **Global locations, UK-only fulfillment**: sculpts any location in the world; ships to UK addresses only.
 - **Made-to-order**: no stock inventory — every piece is produced on demand; lead time is a real constraint to reflect honestly in copy, not paper over.
 - Standard sizes: Small (20×20cm), A4, Large (32×32cm); custom dimensions/scale also available.
 - Corporate/large-format commissions are offered via direct contact rather than self-serve checkout.

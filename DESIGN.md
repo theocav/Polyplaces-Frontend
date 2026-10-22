@@ -1,6 +1,6 @@
 ---
 name: Polyplaces
-description: A physical, tactile 3D topographic map sculpture studio for UK locations.
+description: A physical, tactile 3D topographic map sculpture studio for any location in the world, made and delivered in the UK.
 colors:
   warm-paper: "#f7f4ef"
   warm-paper-deep: "#efe9df"
