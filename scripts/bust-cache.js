@@ -24,6 +24,7 @@ const ASSETS = [
   'assets/js/analytics.js',
   'assets/js/reviews.js',
   'assets/js/turnstile.js',
+  'assets/js/preview/preview.js',
 ];
 
 // Find all HTML files in the project (excluding node_modules)

@@ -994,6 +994,74 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 }
 
 /* ===================================================================
+   3D PREVIEW DIALOG
+   Offered on Add to cart. Reuses the newsletter popup's type and buttons.
+   =================================================================== */
+.pv-overlay{
+  position:fixed;inset:0;z-index:100001;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+  background:rgba(26,23,20,0.55);
+  backdrop-filter:blur(3px);
+  animation:nl-fade 0.25s ease;
+}
+.pv-card{
+  position:relative;
+  width:100%;max-width:460px;
+  max-height:calc(100dvh - 40px);
+  display:flex;flex-direction:column;
+  padding:34px 32px 28px;
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow:0 24px 60px var(--shadow);
+  animation:nl-rise 0.3s ease;
+  outline:none;
+}
+.pv-card-wide{max-width:920px;padding:26px 28px 22px}
+.pv-actions{display:flex;flex-direction:column}
+.pv-actions-row{flex-direction:row;gap:10px;margin-top:14px}
+.pv-actions-row .nl-decline{margin-top:0}
+.pv-actions-row > *{flex:1}
+.pv-head{padding-right:40px}
+.pv-head .nl-title{margin-bottom:6px}
+.pv-sub{font-size:13px;line-height:1.55;color:var(--mid);margin-bottom:14px}
+.pv-stage{
+  position:relative;
+  flex:1 1 auto;
+  min-height:240px;height:min(58vh,540px);
+  background:radial-gradient(ellipse at 50% 40%,var(--bg) 0%,var(--bg-warm) 100%);
+  border:1px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+}
+.pv-canvas{position:absolute;inset:0;cursor:grab}
+.pv-canvas:active{cursor:grabbing}
+.pv-loading{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  padding:20px;text-align:center;
+  font-size:14px;color:var(--mid);
+}
+.pv-loading[hidden]{display:none}
+.pv-bar{width:min(260px,70%);height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.pv-bar-fill{display:block;width:0;height:100%;background:var(--accent);transition:width 0.3s ease}
+.pv-loading-error .pv-bar{display:none}
+.pv-loading-error{color:var(--ink)}
+.pv-credit{margin-top:10px;font-size:11px;line-height:1.5;color:var(--light)}
+@media (max-width:640px){
+  .pv-overlay{align-items:flex-end;padding:12px}
+  .pv-card{padding:24px 20px 20px;max-height:calc(100dvh - 24px)}
+  .pv-card-wide{padding:20px 16px 16px}
+  .pv-stage{height:auto;min-height:280px}
+  .pv-actions-row{flex-direction:column-reverse}
+}
+@media (prefers-reduced-motion: reduce){
+  .pv-overlay,.pv-card{animation:none}
+  .pv-bar-fill{transition:none}
+}
+
+/* ===================================================================
    SITE FORMS
    Hoisted out of contact/index.html so /reviews/ shares one source.
    .contact-form is kept as an alias so existing markup keeps working.

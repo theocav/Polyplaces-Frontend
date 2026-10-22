@@ -4,10 +4,18 @@
   "scripts": {
     "bust": "node scripts/bust-cache.js",
     "snapshot": "node scripts/snapshot-products.js",
-    "preserve": "node scripts/generate-env.js && node scripts/snapshot-products.js && node scripts/bust-cache.js",
-    "serve": "serve -l 3000 ."
+    "preserve": "node scripts/generate-env.js && node scripts/snapshot-products.js && node scripts/build-preview.js && node scripts/bust-cache.js",
+    "serve": "serve -l 3000 .",
+    "build:preview": "node scripts/build-preview.js"
   },
   "devDependencies": {
-    "serve": "^14.2.1"
+    "@mapbox/vector-tile": "^3.0.0",
+    "earcut": "^3.2.4",
+    "esbuild": "^0.28.2",
+    "pbf": "^5.1.2",
+    "pmtiles": "^4.5.0",
+    "polygon-clipping": "^0.15.7",
+    "serve": "^14.2.1",
+    "three": "^0.186.1"
   }
 }

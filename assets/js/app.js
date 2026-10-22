@@ -988,7 +988,7 @@ function initMap() {
   handleIcon = hIcon;
   setupMapSearch();
 
-  document.getElementById('sel-run').onclick = reviewSelection;
+  document.getElementById('sel-run').onclick = offerPreview;
   document.getElementById('sel-clear').onclick = clearMap;
 
   // No map click handler: frame placement is driven by the scale selector only (see selectProduct).
@@ -2404,6 +2404,148 @@ async function reviewSelection() {
   btn.textContent = '\u2713 Added to cart';
   btn.disabled = false;
   openCart();
+}
+
+// ── 3D preview before add to cart ──────────────────────────────────────────────
+// Add to cart first asks whether the visitor wants a 3D preview of the framed
+// area. The preview bundle (three.js + compute worker) loads only on a yes.
+const PREVIEW_MAX_DEG = 0.1;
+const PREVIEW_STAGE_LABELS = {
+  terrain: 'Shaping the terrain',
+  buildings: 'Raising the buildings',
+  water: 'Finding the water',
+  footprints: 'Placing the buildings',
+  mesh: 'Carving the model',
+};
+
+function previewModuleUrl() {
+  const meta = document.querySelector('meta[name="preview-module"]');
+  return meta?.content || '/assets/js/preview/preview.js';
+}
+
+function offerPreview() {
+  if (!selectedProduct || !bbox || !selectionMeta) return;
+  const b = selectionMeta.bbox;
+  const box = [b.south, b.west, b.north, b.east];
+  // Very wide landscape frames are past what the browser preview can build.
+  if (box[2] - box[0] > PREVIEW_MAX_DEG || box[3] - box[1] > PREVIEW_MAX_DEG) {
+    reviewSelection();
+    return;
+  }
+  openPreviewDialog(box, !!selectionMeta.landscape);
+}
+
+function openPreviewDialog(box, landscape) {
+  const lastFocused = document.activeElement;
+  let preview = null;
+  let releaseTrap = null;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'pv-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'pv-title');
+  overlay.innerHTML =
+    '<div class="pv-card" tabindex="-1">' +
+      '<button type="button" class="nl-close pv-close" aria-label="Close">&times;</button>' +
+      '<div class="pv-ask">' +
+        '<p class="nl-eyebrow">Before it goes in your cart</p>' +
+        '<h2 class="nl-title" id="pv-title">See your sculpture in 3D?</h2>' +
+        '<p class="nl-text">We can build a quick 3D preview of the area you framed - the terrain, ' +
+        (landscape ? '' : 'buildings ') + 'and water in the same proportions as the finished piece. ' +
+        'It usually takes 10-30 seconds.</p>' +
+        '<div class="pv-actions">' +
+          '<button type="button" class="nl-submit" data-pv="show">Show me a preview</button>' +
+          '<button type="button" class="nl-decline" data-pv="skip">No thanks, add to cart</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const card = overlay.querySelector('.pv-card');
+
+  function close() {
+    if (!overlay.isConnected) return;
+    preview?.dispose();
+    releaseTrap?.();
+    overlay.remove();
+    document.body.style.overflow = '';
+    if (lastFocused && lastFocused.focus) lastFocused.focus();
+  }
+
+  function addToCart() {
+    close();
+    reviewSelection();
+  }
+
+  releaseTrap = createFocusTrap(card, close);
+  overlay.querySelector('.pv-close').onclick = close;
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector('[data-pv="skip"]').onclick = addToCart;
+  overlay.querySelector('[data-pv="show"]').onclick = () => showPreview();
+  setTimeout(() => overlay.querySelector('[data-pv="show"]').focus(), 60);
+
+  function showPreview() {
+    card.classList.add('pv-card-wide');
+    card.querySelector('.pv-ask').outerHTML =
+      '<div class="pv-head">' +
+        '<h2 class="nl-title" id="pv-title">Your sculpture in 3D</h2>' +
+        '<p class="pv-sub">Drag to turn it, scroll or pinch to zoom. A guide to shape and scale - you&rsquo;ll still approve a proof before we make anything.</p>' +
+      '</div>' +
+      '<div class="pv-stage">' +
+        '<div class="pv-canvas" id="pv-canvas"></div>' +
+        '<div class="pv-loading" id="pv-loading" role="status" aria-live="polite">' +
+          '<span class="pv-loading-label" id="pv-loading-label">Gathering map data</span>' +
+          '<span class="pv-bar" aria-hidden="true"><span class="pv-bar-fill" id="pv-bar-fill"></span></span>' +
+        '</div>' +
+      '</div>' +
+      '<p class="pv-credit" id="pv-credit">Map data &copy; Overture Maps Foundation, &copy; OpenStreetMap contributors (ODbL). ' +
+        'Elevation &copy; Mapterhorn; UK LiDAR from the Environment Agency (Open Government Licence).</p>' +
+      '<div class="pv-actions pv-actions-row">' +
+        '<button type="button" class="nl-decline" data-pv="back">Back to the map</button>' +
+        '<button type="button" class="nl-submit" data-pv="add">Add to cart &rarr;</button>' +
+      '</div>';
+    card.querySelector('[data-pv="back"]').onclick = close;
+    card.querySelector('[data-pv="add"]').onclick = addToCart;
+    card.focus();
+
+    const loading = card.querySelector('#pv-loading');
+    const label = card.querySelector('#pv-loading-label');
+    const fill = card.querySelector('#pv-bar-fill');
+    const showError = (text) => {
+      loading.classList.add('pv-loading-error');
+      label.textContent = text;
+    };
+
+    if (typeof window.ppTrackGA === 'function') window.ppTrackGA('preview_open');
+
+    import(previewModuleUrl()).then((mod) => {
+      if (!overlay.isConnected) return;
+      preview = mod.createPreview(card.querySelector('#pv-canvas'), {
+        bbox: box,
+        config: { includeBuildings: !landscape },
+        onProgress(stage, value, overall) {
+          if (PREVIEW_STAGE_LABELS[stage]) label.textContent = PREVIEW_STAGE_LABELS[stage];
+          fill.style.width = `${Math.round(overall * 100)}%`;
+        },
+        onReady() {
+          loading.hidden = true;
+        },
+        onError(code) {
+          const messages = {
+            bad_bbox: 'This area is too large to preview.',
+            too_many_tiles: 'This area is too large to preview.',
+            no_webgl: 'Your browser can’t show 3D previews.',
+            timeout: 'The preview is taking too long - please try again later.',
+            oom: 'This area is too detailed to preview on this device.',
+          };
+          showError(messages[code] || 'The preview couldn’t be built just now.');
+        },
+      });
+    }).catch(() => {
+      if (overlay.isConnected) showError('The preview couldn’t be loaded just now.');
+    });
+  }
 }
 
 function resetReviewState() {
