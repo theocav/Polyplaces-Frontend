@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
  * build-frames.js
- * Converts the IKEA frame GLBs in src/frames/ (Draco-compressed) into plain
+ * Converts the IKEA frame GLBs in src/frames/ (Draco-compressed), named
+ * <size>-<colour>.glb after the store's frameKey and colour, into plain
  * GLBs in assets/models/, so the browser needs no Draco decoder (which would
  * mean a blob: worker and a CSP change). Uses the decoder shipped with three.
  *
  * Also measures each frame's mount opening (the frames lie face up: +Y is the
  * front, Y = 0 the wall) and writes src/preview/frames.json for the preview
- * bundle, with content-hashed URLs since /assets/* is served immutable.
+ * bundle as { size: { colour: {...} } }, with content-hashed URLs since
+ * /assets/* is served immutable.
  *
  * Usage:  node scripts/build-frames.js
  */
@@ -30,9 +32,12 @@ const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'src/frames');
 const OUT = path.join(ROOT, 'assets/models');
 
-// Mount openings to cut wider than IKEA's, in metres. The Small product is a
-// 200 mm map in this 250 mm frame; IKEA's mount opening is only ~121 mm.
-const MOUNT_OPENINGS = { 'frame-small.glb': 0.2 };
+// Mount openings to cut wider than IKEA's, by size, in metres. The Small
+// product is a 200 mm map in a 250 mm frame; IKEA's openings are ~121 mm.
+const MOUNT_OPENINGS = { small: 0.2 };
+// Files modelled standing upright (front +Z, bottom at Y = 0) rather than
+// lying face up like the rest; they are turned face up before measuring.
+const UPRIGHT = new Set(['small-white.glb']);
 // Width of the bevelled inner edge of the mount, moved out unchanged.
 const BEVEL = 0.012;
 
@@ -219,8 +224,19 @@ function measureOpening(json, bin) {
   const xmin = -edge(-1, 0.0005), xmax = edge(1, 0.0005);
   const zmin = -edge(0.0005, -1), zmax = edge(0.0005, 1);
   const mountY = Math.max(...surfacesAt(tris, xmax + 0.004, 0.0005).filter((y) => y < 0.03));
+  let w = 0, h = 0;
+  for (const { attr, acc } of positionArrays(json, bin, true)) {
+    if (attr !== 'POSITION') continue;
+    w = Math.max(w, acc.max[0] - acc.min[0]);
+    h = Math.max(h, acc.max[2] - acc.min[2]);
+  }
   const r = (v) => Math.round(v * 1e5) / 1e5;
-  return { opening: { xmin: r(xmin), xmax: r(xmax), zmin: r(zmin), zmax: r(zmax) }, backY: r(backY), mountY: r(mountY) };
+  return {
+    opening: { xmin: r(xmin), xmax: r(xmax), zmin: r(zmin), zmax: r(zmax) },
+    backY: r(backY),
+    mountY: r(mountY),
+    outer: { w: r(w), h: r(h) }, // face-up extents: x across, z top to bottom
+  };
 }
 
 // Cuts a wider mount opening by moving vertices outwards, per axis: the
@@ -255,24 +271,77 @@ function widenMount(json, bin, target) {
   }
 }
 
+function positionArrays(json, bin, opaqueOnly) {
+  const out = [];
+  for (const mesh of json.meshes) for (const prim of mesh.primitives) {
+    if (opaqueOnly && json.materials?.[prim.material]?.alphaMode === 'BLEND') continue;
+    for (const attr of ['POSITION', 'NORMAL']) {
+      if (prim.attributes[attr] === undefined) continue;
+      const acc = json.accessors[prim.attributes[attr]];
+      const view = json.bufferViews[acc.bufferView];
+      const arr = new Float32Array(bin.buffer, bin.byteOffset + (view.byteOffset || 0) + (acc.byteOffset || 0), acc.count * 3);
+      out.push({ attr, acc, arr });
+    }
+  }
+  return out;
+}
+
+// Upright (front +Z) to face up (front +Y): (x, y, z) -> (x, z, -y), then
+// back face to Y = 0 and centred in Z. A proper rotation, so normals follow.
+function layFaceUp(json, bin) {
+  const arrays = positionArrays(json, bin, false);
+  let zmin = Infinity, ymin = Infinity, ymax = -Infinity;
+  for (const { attr, arr } of arrays) if (attr === 'POSITION') {
+    for (let i = 0; i < arr.length; i += 3) {
+      zmin = Math.min(zmin, arr[i + 2]); ymin = Math.min(ymin, arr[i + 1]); ymax = Math.max(ymax, arr[i + 1]);
+    }
+  }
+  const ymid = (ymin + ymax) / 2;
+  for (const { attr, arr } of arrays) {
+    for (let i = 0; i < arr.length; i += 3) {
+      const y = arr[i + 1], z = arr[i + 2];
+      if (attr === 'POSITION') { arr[i + 1] = z - zmin; arr[i + 2] = -(y - ymid); }
+      else { arr[i + 1] = z; arr[i + 2] = -y; }
+    }
+  }
+}
+
+// three builds bounding boxes from accessor min/max, so keep them true.
+function refreshBounds(json, bin) {
+  for (const { attr, acc, arr } of positionArrays(json, bin, false)) {
+    if (attr !== 'POSITION') continue;
+    const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < arr.length; i += 3) for (let k = 0; k < 3; k++) {
+      min[k] = Math.min(min[k], arr[i + k]);
+      max[k] = Math.max(max[k], arr[i + k]);
+    }
+    acc.min = min;
+    acc.max = max;
+  }
+}
+
 async function main() {
   const M = await loadDecoder()();
   fs.mkdirSync(OUT, { recursive: true });
   const manifest = {};
-  for (const name of fs.readdirSync(SRC).filter((f) => f.endsWith('.glb'))) {
+  for (const name of fs.readdirSync(SRC).filter((f) => f.endsWith('.glb')).sort()) {
+    const [size, colour] = name.replace(/\.glb$/, '').split('-');
     let glb = await convert(M, path.join(SRC, name));
-    if (MOUNT_OPENINGS[name]) {
+    {
       const { json, bin } = readGlb(glb);
-      widenMount(json, bin, MOUNT_OPENINGS[name]);
+      if (UPRIGHT.has(name)) layFaceUp(json, bin);
+      if (MOUNT_OPENINGS[size]) widenMount(json, bin, MOUNT_OPENINGS[size]);
+      refreshBounds(json, bin);
       glb = writeGlb(json, Buffer.from(bin));
     }
-    fs.writeFileSync(path.join(OUT, name), glb);
+    const outName = `frame-${name}`;
+    fs.writeFileSync(path.join(OUT, outName), glb);
     const { json, bin } = readGlb(glb);
     const hash = crypto.createHash('sha256').update(glb).digest('hex').slice(0, 8);
-    const key = name.replace(/^frame-/, '').replace(/\.glb$/, '');
-    manifest[key] = { url: `/assets/models/${name}?v=${hash}`, ...measureOpening(json, bin) };
-    const o = manifest[key].opening;
-    console.log(`  built  assets/models/${name}  ${(glb.length / 1024).toFixed(0)} KB  opening ` +
+    manifest[size] = manifest[size] || {};
+    manifest[size][colour] = { url: `/assets/models/${outName}?v=${hash}`, ...measureOpening(json, bin) };
+    const o = manifest[size][colour].opening;
+    console.log(`  built  assets/models/${outName}  ${(glb.length / 1024).toFixed(0)} KB  opening ` +
       `${((o.xmax - o.xmin) * 1000).toFixed(1)} x ${((o.zmax - o.zmin) * 1000).toFixed(1)} mm`);
   }
   fs.writeFileSync(path.join(ROOT, 'src/preview/frames.json'), JSON.stringify(manifest, null, 2) + '\n');

@@ -2425,17 +2425,36 @@ function previewModuleUrl() {
   return meta?.content || '/assets/js/preview/preview.js';
 }
 
-// Which IKEA frame the room mock-up hangs the sculpture in. Small, A4 and
-// Large match the three products; custom sizes take the nearest shape.
-function previewFrameFor(product) {
-  const name = String(product?.name || '').toLowerCase();
-  if (name.includes('small')) return 'small';
-  if (name.includes('medium') || name.includes('a4')) return 'medium';
-  if (name.includes('large')) return 'large';
+// The physical size of the piece, unframed, as [width, height] in mm, from
+// the product's display size ("20cm x 20cm", "A4") or custom dimensions.
+function previewPieceMm(product) {
+  if (product?.id === 'custom') return [Number(product.customWidthMm) || 200, Number(product.customHeightMm) || 200];
+  const text = String(product?.displaySize || '');
+  const cm = /(\d+(?:\.\d+)?)\s*cm\s*[x\u00d7]\s*(\d+(?:\.\d+)?)\s*cm/i.exec(text);
+  if (cm) return [Number(cm[1]) * 10, Number(cm[2]) * 10];
+  if (/\bA4\b/i.test(text)) return [210, 297];
   const ratio = Number(product?.aspectRatio) || 1;
-  if (ratio > 1.2 || ratio < 1 / 1.2) return 'medium';
-  const widthMm = Number(product?.customWidthMm) || Number(product?.sizeCode) / CUSTOM_MAP_SCALE;
-  return widthMm <= 220 ? 'small' : 'large';
+  return [200, 200 * ratio];
+}
+
+// The store's frame choices for the selected product, keyed by colour
+// ('oak', 'black', 'white') for the room mock-up.
+function previewFrameChoices(product) {
+  if (!product || product.id === 'custom') return [];
+  return (frameOptions[product.frameKey] || []).map((f) => ({ ...f, colour: f.colourName.toLowerCase() }));
+}
+
+// Mirrors a frame choice made in the preview onto the store's own radios, so
+// the order summary, price and cart all follow it.
+function selectStoreFrame(product, priceId) {
+  const radio = Array.from(document.querySelectorAll('.frame-colour-radio'))
+    .find((r) => r.name === `frame-colour-${product.id}` && r.value === (priceId || ''));
+  if (radio && !radio.checked) {
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change'));
+  } else if (!radio) {
+    handleFrameChange(product, priceId || null, !!priceId);
+  }
 }
 
 function offerPreview() {
@@ -2448,10 +2467,10 @@ function offerPreview() {
     reviewSelection();
     return;
   }
-  openPreviewDialog(box, !!selectionMeta.landscape, previewFrameFor(selectedProduct));
+  openPreviewDialog(box, !!selectionMeta.landscape);
 }
 
-function openPreviewDialog(box, landscape, frame) {
+function openPreviewDialog(box, landscape) {
   const lastFocused = document.activeElement;
   let preview = null;
   let releaseTrap = null;
@@ -2519,6 +2538,7 @@ function openPreviewDialog(box, landscape, frame) {
           '<span class="pv-bar" aria-hidden="true"><span class="pv-bar-fill" id="pv-bar-fill"></span></span>' +
         '</div>' +
       '</div>' +
+      '<div class="pv-frames" id="pv-frames" role="group" aria-labelledby="pv-frames-title" hidden></div>' +
       '<p class="pv-credit" id="pv-credit">Map data &copy; Overture Maps Foundation, &copy; OpenStreetMap contributors (ODbL). ' +
         'Elevation &copy; Mapterhorn; UK LiDAR from the Environment Agency (Open Government Licence).</p>' +
       '<div class="pv-actions pv-actions-row">' +
@@ -2539,23 +2559,82 @@ function openPreviewDialog(box, landscape, frame) {
 
     if (typeof window.ppTrackGA === 'function') window.ppTrackGA('preview_open');
 
+    const product = selectedProduct;
+    const choices = previewFrameChoices(product);
+    const chosen = choices.find((f) => f.priceId === selectedFrame) || null;
+    const addBtn = card.querySelector('[data-pv="add"]');
+    const showPrice = () => {
+      const amount = getEffectiveUnitAmount(product, selectedFrame);
+      addBtn.innerHTML = amount != null ? `Add to cart &middot; ${formatPriceFromAmount(amount)} &rarr;` : 'Add to cart &rarr;';
+    };
+    showPrice();
+
+    // Frame picker under the stage. With no frame chosen it leads as an
+    // upsell; picking one hangs it in the room and selects it on the store.
+    function buildFramePicker() {
+      const bar = card.querySelector('#pv-frames');
+      if (!choices.length) return;
+      const startedBare = !chosen;
+      bar.innerHTML =
+        '<div class="pv-frames-copy">' +
+          `<p class="pv-frames-title" id="pv-frames-title">${startedBare ? 'Finish it with a frame' : 'Frame'}</p>` +
+          (startedBare ? '<p class="pv-frames-note">A box frame with mount, ready to hang. Try one on the wall.</p>' : '') +
+        '</div>' +
+        '<div class="pv-frames-options">' +
+          '<button type="button" class="pv-frame" data-colour="" aria-pressed="false">' +
+            '<span class="pv-frame-swatch pv-frame-swatch--none" aria-hidden="true"></span>No frame</button>' +
+          choices.map((f) => {
+            const hex = /^#[0-9a-fA-F]{3,8}$/.test(f.colourHex) ? f.colourHex : '#cccccc';
+            return `<button type="button" class="pv-frame" data-colour="${escapeHtml(f.colour)}" aria-pressed="false">` +
+              `<span class="pv-frame-swatch" style="background:${hex}" aria-hidden="true"></span>${escapeHtml(f.colourName)}` +
+              `<span class="pv-frame-price">+${formatPriceFromAmount(f.unitAmount)}</span></button>`;
+          }).join('') +
+        '</div>';
+      bar.classList.toggle('pv-frames--upsell', startedBare);
+      bar.hidden = false;
+
+      const buttons = Array.from(bar.querySelectorAll('.pv-frame'));
+      const mark = (colour) => buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.colour === (colour || ''))));
+      mark(chosen?.colour);
+      buttons.forEach((btn) => {
+        btn.onclick = async () => {
+          const colour = btn.dataset.colour || null;
+          const frame = choices.find((f) => f.colour === colour) || null;
+          mark(colour);
+          selectStoreFrame(product, frame?.priceId || null);
+          showPrice();
+          if (frame && startedBare && typeof window.ppTrackGA === 'function') {
+            window.ppTrackGA('preview_frame_upsell', { colour: frame.colourName });
+          }
+          bar.classList.add('pv-frames--busy');
+          await preview?.setFrame(colour);
+          bar.classList.remove('pv-frames--busy');
+        };
+      });
+    }
+
     import(previewModuleUrl()).then((mod) => {
       if (!overlay.isConnected) return;
       preview = mod.createPreview(card.querySelector('#pv-canvas'), {
         bbox: box,
         config: { includeBuildings: !landscape },
-        frame,
-        // Only the A4 frame rotates on the map, between 0 and 90 degrees.
-        rotated: (selectionMeta?.rotation || 0) % 180 === 90,
+        room: {
+          size: choices.length ? product.frameKey : null,
+          colour: chosen?.colour || null,
+          bareMm: previewPieceMm(product),
+          // Only the A4 frame rotates on the map, between 0 and 90 degrees.
+          rotated: (selectionMeta?.rotation || 0) % 180 === 90,
+        },
         onProgress(stage, value, overall) {
           if (PREVIEW_STAGE_LABELS[stage]) label.textContent = PREVIEW_STAGE_LABELS[stage];
           fill.style.width = `${Math.round(overall * 100)}%`;
         },
         onReady(info) {
           loading.hidden = true;
-          // The view switch only matters when the room mock-up loaded.
+          // The view switch and frame picker only matter with the room.
           const views = card.querySelector('#pv-views');
           if (!info?.views?.includes('room')) return;
+          buildFramePicker();
           views.hidden = false;
           views.querySelectorAll('[data-view]').forEach((btn) => {
             btn.onclick = () => {

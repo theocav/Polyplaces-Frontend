@@ -1,19 +1,27 @@
 // Main-thread side of the 3D preview (spec B1, B3): starts the compute worker,
 // renders its triangle buffers with three.js and reports lifecycle events.
 //
-//   const preview = createPreview(el, { bbox: [S, W, N, E], config, frame, rotated, onProgress, onWarning, onError, onReady });
+//   const preview = createPreview(el, { bbox: [S, W, N, E], config, room, onProgress, onWarning, onError, onReady });
 //   preview.setView('room' | 'model');
+//   await preview.setFrame('oak' | 'black' | 'white' | null);
 //   preview.dispose();
 //
-// `frame` ('small' | 'medium' | 'large') hangs the sculpture in that IKEA
-// frame, fitted to its mount opening, on a room wall. Without it, or if the
-// frame fails to load, only the bare model view is shown. `rotated` hangs it
-// landscape, for a frame turned 90 degrees on the map.
+// `room` hangs the piece on a wall above a sideboard:
+//   { size: 'small' | 'medium' | 'large' | null,   frame range (frames.json)
+//     colour: 'oak' | 'black' | 'white' | null,     null = no frame
+//     bareMm: [w, h],                               the piece's own size, unframed
+//     rotated: bool }                               landscape (A4 turned on the map)
+// A framed piece fills its mount opening; an unframed one hangs bare at
+// bareMm. Without `room`, only the close-up model view is shown.
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { buildRoom, SIDEBOARD_HEIGHT } from './room.js';
 import { PROFILE, validateBbox, maxPreviewDegrees } from './config.js';
 import FRAMES from './frames.json';
@@ -41,7 +49,8 @@ export function hasWebGL2() {
 }
 
 export function createPreview(container, opts) {
-  const { bbox, config = {}, frame, rotated = false, onProgress, onWarning, onError, onReady } = opts;
+  const { bbox, config = {}, room = null, onProgress, onWarning, onError, onReady } = opts;
+  const rotated = !!room?.rotated;
   let disposed = false;
   let finished = false;
   let worker = null;
@@ -66,7 +75,7 @@ export function createPreview(container, opts) {
     if (worker) { worker.terminate(); worker = null; }
   }
 
-  const stub = { setView() {}, dispose() { disposed = true; } };
+  const stub = { setView() {}, async setFrame() { return null; }, dispose() { disposed = true; } };
   if (!validateBbox(bbox, maxPreviewDegrees(config.includeBuildings))) {
     queueMicrotask(() => fail('bad_bbox', 'This area is too large to preview.'));
     return stub;
@@ -83,11 +92,27 @@ export function createPreview(container, opts) {
     return stub;
   }
 
-  // Start the frame download alongside the compute so it is ready together.
-  const frameInfo = frame ? FRAMES[frame] : null;
-  const framePromise = frameInfo
-    ? new GLTFLoader().loadAsync(frameInfo.url).catch(() => null)
-    : Promise.resolve(null);
+  // Frame models load on demand, once per colour; the initial one starts
+  // alongside the compute so it is ready together.
+  const frameRange = room?.size ? FRAMES[room.size] || null : null;
+  const loader = new GLTFLoader();
+  const frameLoads = {};
+  const loadFrame = (colour) => {
+    if (!frameRange?.[colour]) return Promise.resolve(null);
+    frameLoads[colour] ||= loader.loadAsync(frameRange[colour].url).then((gltf) => {
+      disposables.push({ dispose: () => gltf.scene.traverse((o) => {
+        if (!o.isMesh) return;
+        o.geometry.dispose();
+        for (const m of [].concat(o.material)) {
+          for (const v of Object.values(m)) if (v?.isTexture) v.dispose();
+          m.dispose();
+        }
+      }) });
+      return gltf;
+    }).catch(() => null);
+    return frameLoads[colour];
+  };
+  const framePromise = loadFrame(room?.colour);
 
   timer = setTimeout(() => fail('timeout', 'The preview took too long to build.'), PROFILE.timeoutMs);
   worker.onerror = (e) => { e.preventDefault?.(); fail('oom', 'The preview ran out of memory. Try a smaller area.'); };
@@ -108,7 +133,7 @@ export function createPreview(container, opts) {
       cleanupWorker();
       framePromise.then((gltf) => {
         if (disposed) return;
-        if (frameInfo && !gltf) onWarning?.('frame_missing', 'The frame could not be loaded.');
+        if (room?.colour && !gltf) onWarning?.('frame_missing', 'The frame could not be loaded.');
         try {
           render(msg, gltf);
           onReady?.({ size: msg.size, stats: msg.stats, attribution: msg.attribution, views: Object.keys(views), view: active });
@@ -177,70 +202,112 @@ export function createPreview(container, opts) {
     controls.minDistance = span * 0.15;
     controls.maxDistance = span * 4;
     controls.maxPolarAngle = Math.PI * 0.49;
-    return { scene, camera, controls };
+    return { scene, camera, controls, aoRadius: span * 0.02 };
   }
 
-  function roomView(msg, material, gltf, env) {
+  function roomView(msg, material, env) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(ROOM.background);
     buildRoom(scene, renderer, disposables);
-
     scene.environment = env;
     scene.environmentIntensity = 0.45;
 
-    // The frame lies face up in its file (+Y front, Y = 0 back); stand it on
-    // the wall so its front faces the room and its -Z edge is the top, hung
-    // a hand's width above the sideboard. A rotated selection (the A4 frame
-    // turned on the map) hangs the frame landscape.
-    const frameRoot = gltf.scene;
-    const fileSize = new THREE.Box3().setFromObject(frameRoot).getSize(new THREE.Vector3());
-    const frameHeight = rotated ? fileSize.x : fileSize.z;
-    frameRoot.rotation.x = Math.PI / 2;
-    const hanger = new THREE.Group();
-    hanger.add(frameRoot);
-    if (rotated) hanger.rotation.z = Math.PI / 2;
-    hanger.position.set(0, SIDEBOARD_HEIGHT + ROOM.hangGap + frameHeight / 2, 0.002);
-    frameRoot.traverse((o) => {
-      if (!o.isMesh) return;
-      const mats = Array.isArray(o.material) ? o.material : [o.material];
-      // No glass: a raised sculpture sits proud of where it would be.
-      if (mats.some((m) => m.transparent)) { o.visible = false; return; }
-      // Keep the black finish black under the room's environment light.
-      for (const m of mats) m.envMapIntensity = 0.35;
-      o.castShadow = true;
-      o.receiveShadow = true;
-    });
-    scene.add(hanger);
+    // Hang height and camera are fixed by the size's largest frame (or the
+    // bare piece when the size has no frames), so swapping frames never
+    // moves the view.
+    const outers = Object.values(frameRange || {}).map((f) => f.outer);
+    const bare = room.bareMm.map((v) => v / 1000);
+    const [bareW, bareH] = rotated ? [bare[1], bare[0]] : bare;
+    const hangW = outers.length ? Math.max(...outers.map((o) => (rotated ? o.h : o.w))) : bareW;
+    const hangH = outers.length ? Math.max(...outers.map((o) => (rotated ? o.w : o.h))) : bareH;
+    const centre = new THREE.Vector3(0, SIDEBOARD_HEIGHT + ROOM.hangGap + hangH / 2, 0);
 
-    // Fill the mount opening (frame-local metres) exactly, each axis scaled to
-    // its side; the IKEA openings differ from the product shapes by a few
-    // percent, which a stretch hides better than a visible margin. Height
-    // takes the mean of the two. The base rests on the backing board behind
-    // the mount; in a landscape-hung frame the holder turns back so north
-    // stays up.
-    const { opening, backY } = frameInfo;
-    const openX = opening.xmax - opening.xmin;
-    const openZ = opening.zmax - opening.zmin;
-    const [openW, openH] = rotated ? [openZ, openX] : [openX, openZ];
-    const sw = openW / msg.size.widthMm;
-    const sh = openH / msg.size.depthMm;
-    const sv = (sw + sh) / 2;
-    const holder = new THREE.Group();
-    holder.position.set((opening.xmin + opening.xmax) / 2, backY, (opening.zmin + opening.zmax) / 2);
-    if (rotated) holder.rotation.y = -Math.PI / 2;
-    const sculpture = buildSculpture(msg, material);
-    // Sculpture axes before its own rotation: x east, y north, z up.
-    sculpture.scale.set(sw, sh, sv);
-    sculpture.position.y = msg.size.baseMm * sv;
-    holder.add(sculpture);
-    frameRoot.add(holder);
+    // Sculpture scaled to w x h metres, north up, its up axis turned to +Y
+    // of the returned group and its base at Y = 0. Each axis is scaled to
+    // its side (the IKEA openings differ from the product shapes by a few
+    // percent, which a stretch hides better than a margin); height takes the
+    // mean of the two.
+    function fitted(w, h) {
+      const sw = w / msg.size.widthMm;
+      const sh = h / msg.size.depthMm;
+      const sv = (sw + sh) / 2;
+      const sculpture = buildSculpture(msg, material);
+      // Sculpture axes before its own rotation: x east, y north, z up.
+      sculpture.scale.set(sw, sh, sv);
+      sculpture.position.y = msg.size.baseMm * sv;
+      const wrap = new THREE.Group();
+      wrap.add(sculpture);
+      return wrap;
+    }
+
+    // Framed: the frame lies face up in its file (+Y front, Y = 0 back), so
+    // it is stood on the wall with its -Z edge at the top, turned 90 degrees
+    // for a landscape selection. The sculpture fills the mount opening, base
+    // on the backing board. Glass is hidden: a raised sculpture would sit
+    // proud of where it is.
+    function framed(gltf, info) {
+      const frameRoot = gltf.scene;
+      frameRoot.rotation.x = Math.PI / 2;
+      for (const c of frameRoot.children.filter((o) => o.userData.sculpture)) frameRoot.remove(c);
+      frameRoot.traverse((o) => {
+        if (!o.isMesh) return;
+        const mats = [].concat(o.material);
+        if (mats.some((m) => m.transparent)) { o.visible = false; return; }
+        // Keep dark finishes dark under the room's environment light.
+        for (const m of mats) m.envMapIntensity = 0.35;
+        o.castShadow = true;
+        o.receiveShadow = true;
+      });
+      const hanger = new THREE.Group();
+      hanger.add(frameRoot);
+      if (rotated) hanger.rotation.z = Math.PI / 2;
+      hanger.position.set(centre.x, centre.y, 0.002);
+
+      const { opening, backY } = info;
+      const openX = opening.xmax - opening.xmin;
+      const openZ = opening.zmax - opening.zmin;
+      const [openW, openH] = rotated ? [openZ, openX] : [openX, openZ];
+      const holder = fitted(openW, openH);
+      holder.userData.sculpture = true;
+      holder.position.set((opening.xmin + opening.xmax) / 2, backY, (opening.zmin + opening.zmax) / 2);
+      if (rotated) holder.rotation.y = -Math.PI / 2; // keep north up
+      frameRoot.add(holder);
+      return hanger;
+    }
+
+    // Unframed: the bare piece lies flat on the sideboard between the books
+    // and the vase, north towards the wall, as it would on a desk.
+    const deskSpot = new THREE.Vector3(0, SIDEBOARD_HEIGHT, 0.2);
+    function unframed() {
+      const piece = fitted(bareW, bareH);
+      piece.position.copy(deskSpot);
+      return piece;
+    }
+
+    let current = null;
+    let shown = false;
+    let request = 0;
+    async function hang(colour) {
+      const ticket = ++request;
+      const gltf = colour ? await loadFrame(colour) : null;
+      // A later choice wins if the user clicks quickly through colours.
+      if (disposed || ticket !== request) return null;
+      const next = gltf ? framed(gltf, frameRange[colour]) : unframed();
+      if (current) scene.remove(current);
+      current = next;
+      scene.add(current);
+      frameView(gltf ? 'wall' : 'desk', !shown);
+      shown = true;
+      dirty = true;
+      return gltf ? colour : null;
+    }
 
     // Daylight from a window off to the left: a wide, soft-edged spot that
     // leaves a gentle pool of light on the wall, plus a dim warm bounce.
     scene.add(new THREE.HemisphereLight(0xfff8ee, 0x8a7258, 0.35));
     const sun = new THREE.SpotLight(0xfff0dc, 5.5, 0, 0.62, 0.95, 0);
-    sun.position.set(-1.9, 2.5, 2.6);
-    sun.target.position.copy(hanger.position).add(new THREE.Vector3(0.1, -0.15, 0));
+    sun.position.set(-2.4, 2.6, 1.7);
+    sun.target.position.copy(centre).add(new THREE.Vector3(0.1, -0.3, 0.1));
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.bias = -0.0002;
@@ -249,30 +316,75 @@ export function createPreview(container, opts) {
     sun.shadow.camera.far = 7;
     scene.add(sun, sun.target);
 
-    hanger.updateMatrixWorld(true);
-    const frameBox = new THREE.Box3().setFromObject(hanger);
-    const frameSize = frameBox.getSize(new THREE.Vector3());
-    const frameCenter = frameBox.getCenter(new THREE.Vector3());
     const aspect = (container.clientWidth || 1) / (container.clientHeight || 1);
     const camera = new THREE.PerspectiveCamera(40, aspect, 0.01, 30);
-    // Frame about a third of the view, the sideboard top in shot below it so
-    // it reads as a room; seen from slightly to one side.
-    const target = new THREE.Vector3(frameCenter.x, frameCenter.y - frameSize.y * 0.45, frameCenter.z);
     const halfV = THREE.MathUtils.degToRad(20);
     const halfFit = Math.min(halfV, Math.atan(Math.tan(halfV) * aspect));
-    const dist = Math.max(0.42, frameSize.y * 1.45) / Math.tan(halfFit);
-    camera.position.set(target.x + dist * 0.22, target.y + dist * 0.02, dist);
+
+    // Two camera poses. Wall: the frame about a third of the view with the
+    // sideboard top below it, seen slightly from one side. Desk: looking
+    // down at the piece on the sideboard, wall and grasses behind it.
+    const wallTarget = new THREE.Vector3(centre.x, centre.y - hangH * 0.45, 0.03);
+    const wallDist = Math.max(0.42, hangH * 1.45) / Math.tan(halfFit);
+    const deskTarget = deskSpot.clone().add(new THREE.Vector3(0, 0.03, 0));
+    const deskDist = Math.max(0.5, Math.max(bareW, bareH) * 1.8) / Math.tan(halfFit);
+    const poses = {
+      wall: {
+        target: wallTarget,
+        position: wallTarget.clone().add(new THREE.Vector3(0.22, 0.02, 1).multiplyScalar(wallDist)),
+        polar: [Math.PI * 0.3, Math.PI * 0.62],
+      },
+      desk: {
+        target: deskTarget,
+        position: deskTarget.clone().add(new THREE.Vector3(0.18, 0.62, 0.78).normalize().multiplyScalar(deskDist)),
+        polar: [Math.PI * 0.12, Math.PI * 0.47],
+      },
+    };
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.copy(target);
-    controls.minDistance = Math.max(frameSize.x, frameSize.y) * 0.35;
+    controls.minDistance = Math.max(hangW, hangH) * 0.35;
     controls.maxDistance = 3.2;
     controls.minAzimuthAngle = -Math.PI * 0.38;
     controls.maxAzimuthAngle = Math.PI * 0.38;
-    controls.minPolarAngle = Math.PI * 0.3;
-    controls.maxPolarAngle = Math.PI * 0.62;
     controls.enablePan = false;
-    return { scene, camera, controls };
+
+    // Glides between poses when a frame is added or removed; instant the
+    // first time. Orbit limits switch once the move lands.
+    let glide = 0;
+    function frameView(name, instant) {
+      const pose = poses[name];
+      const fromPos = camera.position.clone();
+      const fromTarget = controls.target.clone();
+      const land = () => {
+        [controls.minPolarAngle, controls.maxPolarAngle] = pose.polar;
+        controls.enabled = active === 'room';
+        dirty = true;
+      };
+      cancelAnimationFrame(glide);
+      if (instant) {
+        camera.position.copy(pose.position);
+        controls.target.copy(pose.target);
+        camera.lookAt(pose.target);
+        land();
+        return;
+      }
+      controls.enabled = false;
+      controls.minPolarAngle = 0;
+      controls.maxPolarAngle = Math.PI;
+      const start = performance.now();
+      const step = (now) => {
+        const t = Math.min((now - start) / 700, 1);
+        const k = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        camera.position.lerpVectors(fromPos, pose.position, k);
+        controls.target.lerpVectors(fromTarget, pose.target, k);
+        camera.lookAt(controls.target);
+        dirty = true;
+        if (t < 1) glide = requestAnimationFrame(step);
+        else land();
+      };
+      glide = requestAnimationFrame(step);
+    }
+    return { scene, camera, controls, aoRadius: 0.004, hang };
   }
 
   function render(msg, gltf) {
@@ -313,16 +425,23 @@ export function createPreview(container, opts) {
     disposables.push(env);
 
     views.model = modelView(msg, material, env);
-    if (gltf && frameInfo) {
-      views.room = roomView(msg, material, gltf, env);
-      disposables.push({ dispose: () => gltf.scene.traverse((o) => {
-        if (!o.isMesh) return;
-        o.geometry.dispose();
-        for (const m of [].concat(o.material)) {
-          for (const v of Object.values(m)) if (v?.isTexture) v.dispose();
-          m.dispose();
-        }
-      }) });
+    if (room?.bareMm) {
+      views.room = roomView(msg, material, env);
+      views.room.hang(gltf ? room.colour : null);
+    }
+    // Ambient occlusion darkens the ground at each building's foot, so the
+    // buildings stay distinct from the streets even when seen head-on, where
+    // tops and ground otherwise catch identical light. Radius is in each
+    // view's own units (mm for the close-up, metres for the room).
+    for (const v of Object.values(views)) {
+      v.composer = new EffectComposer(renderer);
+      v.composer.addPass(new RenderPass(v.scene, v.camera));
+      const ao = new GTAOPass(v.scene, v.camera, 1, 1);
+      ao.updateGtaoMaterial({ radius: v.aoRadius, distanceFallOff: 1, thickness: v.aoRadius, samples: 12 });
+      ao.blendIntensity = 1;
+      v.composer.addPass(ao);
+      v.composer.addPass(new OutputPass());
+      disposables.push(v.composer, ao);
     }
     for (const v of Object.values(views)) {
       v.controls.enableDamping = true;
@@ -341,6 +460,8 @@ export function createPreview(container, opts) {
       for (const v of Object.values(views)) {
         v.camera.aspect = w / h;
         v.camera.updateProjectionMatrix();
+        v.composer.setPixelRatio(renderer.getPixelRatio());
+        v.composer.setSize(w, h);
       }
       dirty = true;
     };
@@ -354,7 +475,7 @@ export function createPreview(container, opts) {
       const moved = v.controls.update();
       if (moved || dirty) {
         dirty = false;
-        renderer.render(v.scene, v.camera);
+        v.composer.render();
       }
     });
   }
@@ -369,6 +490,10 @@ export function createPreview(container, opts) {
 
   return {
     setView,
+    // Resolves to the colour actually hung (null if unframed or it failed).
+    async setFrame(colour) {
+      return views.room ? views.room.hang(colour || null) : null;
+    },
     dispose() {
       if (disposed) return;
       disposed = true;

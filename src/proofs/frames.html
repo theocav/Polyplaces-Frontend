@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frame Models</title>
+<!-- Dev-only sheet (src/ is not deployed): renders every frame GLB front-on
+     for checking size and colour. http://localhost:3000/src/proofs/frames.html
+     Add #incoming to view the raw downloads in src/frames/incoming/. -->
+<script type="importmap">
+  { "imports": {
+    "three": "/node_modules/three/build/three.module.js",
+    "three/addons/": "/node_modules/three/examples/jsm/"
+  } }
+</script>
+<style>
+  body { margin: 0; padding: 16px; background: #f7f4ef; font: 13px/1.4 system-ui, sans-serif; color: #1a1714; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  figure { margin: 0; background: #fff; border: 1px solid rgba(26,23,20,.1); border-radius: 8px; overflow: hidden; }
+  canvas { display: block; width: 100%; aspect-ratio: 1; background: #e4ddd2; }
+  figcaption { padding: 8px 10px; }
+</style>
+</head>
+<body>
+<div class="grid" id="grid"></div>
+<script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+  import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+  const dir = location.hash.slice(1);
+  const files = dir === 'incoming'
+    ? ['60459118-mini', '00459116', '20568911', '20548918-mini', '40548922', '00566395', '40528165-mini', '80528168', '80568913']
+      .map((f) => `/src/frames/incoming/${f}.glb`)
+    : (await (await fetch('/src/preview/frames.json')).json().then((m) => Object.values(m).map((f) => f.url)));
+
+  const draco = new DRACOLoader().setDecoderPath('/node_modules/three/examples/jsm/libs/draco/gltf/');
+  const loader = new GLTFLoader().setDRACOLoader(draco);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setSize(440, 440);
+  renderer.toneMapping = THREE.AgXToneMapping;
+  const env = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+
+  for (const url of files) {
+    const gltf = await loader.loadAsync(url);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xe4ddd2);
+    scene.environment = env;
+    scene.add(new THREE.DirectionalLight(0xffffff, 1.5).translateY(2).translateZ(1));
+    const root = gltf.scene;
+    const box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    scene.add(root);
+    root.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m.transparent)) o.visible = false; });
+    // Look straight down the thinnest axis at the frame's front.
+    const thin = size.x < size.y && size.x < size.z ? 'x' : size.y < size.z ? 'y' : 'z';
+    const c = box.getCenter(new THREE.Vector3());
+    const span = Math.max(size.x, size.y, size.z);
+    const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 10);
+    cam.position.copy(c);
+    cam.position[thin] = box.max[thin] + span * 1.9;
+    if (thin === 'y') cam.up.set(0, 0, -1);
+    cam.lookAt(c);
+    renderer.render(scene, cam);
+    const fig = document.createElement('figure');
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 440;
+    canvas.getContext('2d').drawImage(renderer.domElement, 0, 0);
+    const mm = (v) => Math.round(v * 1000);
+    fig.append(canvas);
+    fig.insertAdjacentHTML('beforeend', `<figcaption><strong>${url.split('/').pop()}</strong><br>${mm(size.x)} x ${mm(size.y)} x ${mm(size.z)} mm, front +${thin}</figcaption>`);
+    document.getElementById('grid').append(fig);
+  }
+</script>
+</body>
+</html>
