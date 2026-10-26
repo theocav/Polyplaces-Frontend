@@ -47,7 +47,7 @@
   const dLon = SIZE_M / 2 / (111320 * Math.cos((CENTER.lat * Math.PI) / 180));
   const BBOX = [CENTER.lat - dLat, CENTER.lng - dLon, CENTER.lat + dLat, CENTER.lng + dLon];
 
-  const { createPreview } = await import('/assets/js/preview/preview.js?v=19e9016a');
+  const { createPreview } = await import('/assets/js/preview/preview.js?v=d411be7d');
   const grid = document.getElementById('grid');
   const fmt = (v, d = 0) => (v == null ? '-' : v.toFixed(d));
 

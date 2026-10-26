@@ -13,6 +13,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { buildRoom, SIDEBOARD_HEIGHT } from './room.js';
 import { PROFILE, validateBbox, maxPreviewDegrees } from './config.js';
 import FRAMES from './frames.json';
 
@@ -26,12 +28,8 @@ const STAGE_WEIGHTS = { terrain: 0.35, buildings: 0.3, water: 0.1, footprints: 0
 const SCULPTURE_COLOR = 0xeee8dd;
 
 const ROOM = {
-  wall: 0xe9e2d6,
-  floor: 0xa98564,
-  skirting: 0xf4f1ec,
-  sideboard: 0x8a6a4f,
-  sideboardHeight: 0.72, // metres
-  hangGap: 0.24, // sideboard top to frame bottom
+  background: 0xd6cdc0, // beyond the wall's edges, rarely seen
+  hangGap: 0.24, // sideboard top to frame bottom, metres
 };
 
 export function hasWebGL2() {
@@ -138,19 +136,32 @@ export function createPreview(container, opts) {
     return group;
   }
 
-  function modelView(msg, material) {
+  function modelView(msg, material, env) {
     const scene = new THREE.Scene();
+    scene.environment = env;
+    scene.environmentIntensity = 0.45;
     const sculpture = buildSculpture(msg, material);
     scene.add(sculpture);
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xb9a98f, 1.6));
-    const sun = new THREE.DirectionalLight(0xffffff, 2.0);
-    sun.position.set(-0.6, 1, 0.45);
-    scene.add(sun);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xb9a98f, 0.5));
 
     const box = new THREE.Box3().setFromObject(sculpture);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const span = Math.max(size.x, size.z);
+
+    // Raking light from the front left (south-west), with shadows, so streets
+    // and building edges read the way they do on the printed piece.
+    const sun = new THREE.DirectionalLight(0xfffaf2, 3.8);
+    sun.position.copy(center).add(new THREE.Vector3(-0.75, 0.9, 0.5).multiplyScalar(span * 2));
+    sun.target.position.copy(center);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.bias = -0.0005;
+    sun.shadow.normalBias = span * 0.0008;
+    Object.assign(sun.shadow.camera, {
+      left: -span * 0.8, right: span * 0.8, top: span * 0.8, bottom: -span * 0.8, near: span * 0.5, far: span * 5,
+    });
+    scene.add(sun, sun.target);
 
     const aspect = (container.clientWidth || 1) / (container.clientHeight || 1);
     const camera = new THREE.PerspectiveCamera(35, aspect, span / 200, span * 20);
@@ -169,57 +180,13 @@ export function createPreview(container, opts) {
     return { scene, camera, controls };
   }
 
-  function roomView(msg, material, gltf) {
+  function roomView(msg, material, gltf, env) {
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(ROOM.wall);
-    const flat = (color, roughness = 0.95) => {
-      const m = new THREE.MeshStandardMaterial({ color, roughness, metalness: 0 });
-      disposables.push(m);
-      return m;
-    };
-    const box = (w, h, d, mat) => {
-      const g = new THREE.BoxGeometry(w, h, d);
-      disposables.push(g);
-      const mesh = new THREE.Mesh(g, mat);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      return mesh;
-    };
+    scene.background = new THREE.Color(ROOM.background);
+    buildRoom(scene, renderer, disposables);
 
-    // Wall at z = 0 facing +z, floor at y = 0, skirting and a low sideboard.
-    const wallGeom = new THREE.PlaneGeometry(8, 4);
-    const floorGeom = new THREE.PlaneGeometry(8, 6);
-    disposables.push(wallGeom, floorGeom);
-    const wall = new THREE.Mesh(wallGeom, flat(ROOM.wall));
-    wall.position.set(0, 2, 0);
-    wall.receiveShadow = true;
-    const floor = new THREE.Mesh(floorGeom, flat(ROOM.floor, 0.8));
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(0, 0, 3);
-    floor.receiveShadow = true;
-    const skirting = box(8, 0.1, 0.018, flat(ROOM.skirting));
-    skirting.position.set(0, 0.05, 0.009);
-    const sideboard = box(1.4, ROOM.sideboardHeight, 0.42, flat(ROOM.sideboard, 0.7));
-    sideboard.position.set(0, ROOM.sideboardHeight / 2, 0.22);
-    scene.add(wall, floor, skirting, sideboard);
-
-    // A vase and a few books on the sideboard, for scale.
-    const ceramic = flat(0xf3efe8, 0.6);
-    const vaseProfile = [[0, 0], [0.055, 0], [0.075, 0.06], [0.07, 0.15], [0.035, 0.22], [0.032, 0.26], [0.04, 0.27]]
-      .map(([r, h]) => new THREE.Vector2(r, h));
-    const vaseGeom = new THREE.LatheGeometry(vaseProfile, 40);
-    disposables.push(vaseGeom);
-    const vase = new THREE.Mesh(vaseGeom, ceramic);
-    vase.castShadow = true;
-    vase.position.set(0.48, ROOM.sideboardHeight, 0.2);
-    scene.add(vase);
-    [[0x5b6b5a, 0.035], [0xc9b79c, 0.028], [0x2f3b4a, 0.04]].reduce((y, [color, h], k) => {
-      const book = box(0.22 - k * 0.015, h, 0.16, flat(color, 0.85));
-      book.position.set(-0.48 + k * 0.006, y + h / 2, 0.2);
-      book.rotation.y = (k - 1) * 0.08;
-      scene.add(book);
-      return y + h;
-    }, ROOM.sideboardHeight);
+    scene.environment = env;
+    scene.environmentIntensity = 0.45;
 
     // The frame lies face up in its file (+Y front, Y = 0 back); stand it on
     // the wall so its front faces the room and its -Z edge is the top, hung
@@ -232,12 +199,14 @@ export function createPreview(container, opts) {
     const hanger = new THREE.Group();
     hanger.add(frameRoot);
     if (rotated) hanger.rotation.z = Math.PI / 2;
-    hanger.position.set(0, ROOM.sideboardHeight + ROOM.hangGap + frameHeight / 2, 0.002);
+    hanger.position.set(0, SIDEBOARD_HEIGHT + ROOM.hangGap + frameHeight / 2, 0.002);
     frameRoot.traverse((o) => {
       if (!o.isMesh) return;
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       // No glass: a raised sculpture sits proud of where it would be.
       if (mats.some((m) => m.transparent)) { o.visible = false; return; }
+      // Keep the black finish black under the room's environment light.
+      for (const m of mats) m.envMapIntensity = 0.35;
       o.castShadow = true;
       o.receiveShadow = true;
     });
@@ -266,17 +235,18 @@ export function createPreview(container, opts) {
     holder.add(sculpture);
     frameRoot.add(holder);
 
-    // Soft window light from the front left; a broad fill keeps shadows gentle.
-    scene.add(new THREE.HemisphereLight(0xfffaf2, 0x9a8670, 1.7));
-    const sun = new THREE.DirectionalLight(0xfff4e6, 1.3);
-    sun.position.set(-1.6, 2.6, 3.2);
-    sun.target.position.copy(hanger.position);
+    // Daylight from a window off to the left: a wide, soft-edged spot that
+    // leaves a gentle pool of light on the wall, plus a dim warm bounce.
+    scene.add(new THREE.HemisphereLight(0xfff8ee, 0x8a7258, 0.35));
+    const sun = new THREE.SpotLight(0xfff0dc, 5.5, 0, 0.62, 0.95, 0);
+    sun.position.set(-1.9, 2.5, 2.6);
+    sun.target.position.copy(hanger.position).add(new THREE.Vector3(0.1, -0.15, 0));
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.radius = 6;
-    sun.shadow.bias = -0.0004;
-    sun.shadow.normalBias = 0.002;
-    Object.assign(sun.shadow.camera, { left: -1.2, right: 1.2, top: 1.2, bottom: -1.6, near: 0.5, far: 8 });
+    sun.shadow.bias = -0.0002;
+    sun.shadow.normalBias = 0.003;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 7;
     scene.add(sun, sun.target);
 
     hanger.updateMatrixWorld(true);
@@ -309,6 +279,8 @@ export function createPreview(container, opts) {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.AgXToneMapping;
+    renderer.toneMappingExposure = 1.1;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
@@ -332,9 +304,17 @@ export function createPreview(container, opts) {
     });
     disposables.push(material);
 
-    views.model = modelView(msg, material);
+    // Soft image-based light for fill and reflections, shared by both views.
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envScene = new RoomEnvironment();
+    const env = pmrem.fromScene(envScene, 0.04).texture;
+    envScene.dispose();
+    pmrem.dispose();
+    disposables.push(env);
+
+    views.model = modelView(msg, material, env);
     if (gltf && frameInfo) {
-      views.room = roomView(msg, material, gltf);
+      views.room = roomView(msg, material, gltf, env);
       disposables.push({ dispose: () => gltf.scene.traverse((o) => {
         if (!o.isMesh) return;
         o.geometry.dispose();
