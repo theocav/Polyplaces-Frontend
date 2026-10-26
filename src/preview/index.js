@@ -243,21 +243,26 @@ export function createPreview(container, opts) {
     });
     scene.add(hanger);
 
-    // Fit the sculpture inside the mount opening (frame-local metres) at one
-    // uniform scale, so a shape mismatch leaves a margin rather than
-    // stretching the map. Its base rests on the backing board behind the
-    // mount. In a landscape-hung frame the holder turns back so north stays up.
+    // Fill the mount opening (frame-local metres) exactly, each axis scaled to
+    // its side; the IKEA openings differ from the product shapes by a few
+    // percent, which a stretch hides better than a visible margin. Height
+    // takes the mean of the two. The base rests on the backing board behind
+    // the mount; in a landscape-hung frame the holder turns back so north
+    // stays up.
     const { opening, backY } = frameInfo;
     const openX = opening.xmax - opening.xmin;
     const openZ = opening.zmax - opening.zmin;
     const [openW, openH] = rotated ? [openZ, openX] : [openX, openZ];
-    const s = Math.min(openW / msg.size.widthMm, openH / msg.size.depthMm);
+    const sw = openW / msg.size.widthMm;
+    const sh = openH / msg.size.depthMm;
+    const sv = (sw + sh) / 2;
     const holder = new THREE.Group();
     holder.position.set((opening.xmin + opening.xmax) / 2, backY, (opening.zmin + opening.zmax) / 2);
     if (rotated) holder.rotation.y = -Math.PI / 2;
     const sculpture = buildSculpture(msg, material);
-    sculpture.scale.setScalar(s);
-    sculpture.position.y = msg.size.baseMm * s;
+    // Sculpture axes before its own rotation: x east, y north, z up.
+    sculpture.scale.set(sw, sh, sv);
+    sculpture.position.y = msg.size.baseMm * sv;
     holder.add(sculpture);
     frameRoot.add(holder);
 

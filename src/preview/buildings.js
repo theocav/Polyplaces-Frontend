@@ -25,6 +25,12 @@ export function resolveHeight(props, profile) {
   return { height: profile.defaultBuildingHeightM, provided: false };
 }
 
+// Logarithmic height compression above a knee (profile.buildingLogKneeM).
+export function compressHeight(h, profile) {
+  const k = profile.buildingLogKneeM;
+  return k > 0 && h > 0 ? k * Math.log1p(h / k) : h;
+}
+
 export function resolveMinHeight(props, profile) {
   const m = firstNum(props, ['min_height', 'building_min_height']);
   if (m != null) return m;
@@ -146,10 +152,10 @@ export function buildFootprints(building, buildingPart, sampleZ, profile, onWarn
     const baseZ = sampleZ(rx, ry);
     // baseZ is already preview mm; building metres use their own scale.
     const kb = profile.buildingMmPerM;
-    const zBottom = Math.max(baseZ + (minHeight - profile.buildingSinkM) * kb, -profile.baseMinMm);
-    const zTop = baseZ + (minHeight + height) * kb;
+    const zBottom = Math.max(baseZ + (compressHeight(minHeight, profile) - profile.buildingSinkM) * kb, -profile.baseMinMm);
+    const zTop = baseZ + compressHeight(minHeight + height, profile) * kb;
     if (!(zTop > zBottom) || height <= 0 || it.area < 1e-10) continue;
-    out.push({ geom: it.geom, zBottom, zTop, heightProvided: provided, area: it.area });
+    out.push({ geom: it.geom, zBottom, zTop, heightProvided: provided, area: it.area, heightM: minHeight + height });
   }
 
   if (out.length > profile.maxBuildings) {

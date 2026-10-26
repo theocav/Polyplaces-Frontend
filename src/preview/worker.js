@@ -6,7 +6,7 @@ import { PROFILE, DEFAULT_CLIENT_CONFIG, validateBbox, maxPreviewDegrees, terrai
 import { makeFrame } from './geo.js';
 import { buildTerrain, makeSampler } from './terrain.js';
 import { ingestOverture, checkTileBudget, PreviewError } from './overture.js';
-import { buildFootprints } from './buildings.js';
+import { buildFootprints, compressHeight } from './buildings.js';
 import { buildMeshes } from './mesh.js';
 
 const post = (msg, transfer) => self.postMessage(msg, transfer || []);
@@ -25,6 +25,7 @@ async function run(bbox, overrides) {
   }
   const frame = makeFrame(bbox);
   const profile = frameProfile(PROFILE, frame.rect);
+  if (config.buildingLogKneeM !== undefined) profile.buildingLogKneeM = config.buildingLogKneeM;
   checkTileBudget(frame, profile, config.includeBuildings);
 
   const hooks = { onWarning: warning };
@@ -49,6 +50,10 @@ async function run(bbox, overrides) {
   });
   progress('mesh', 1);
 
+  const heights = footprints.map((f) => f.heightM).sort((a, b) => a - b);
+  const tallest = heights.length ? heights[heights.length - 1] : 0;
+  const median = heights.length ? heights[heights.length >> 1] : 0;
+
   const transfer = [];
   for (const layer of Object.values(mesh.layers)) {
     transfer.push(layer.positions.buffer);
@@ -58,7 +63,16 @@ async function run(bbox, overrides) {
     type: 'ready',
     layers: mesh.layers,
     size: mesh.size,
-    stats: { buildings: footprints.length, waterBodies: features.water.length, grid: [grid.nx, grid.ny] },
+    stats: {
+      buildings: footprints.length,
+      waterBodies: features.water.length,
+      grid: [grid.nx, grid.ny],
+      tallestM: tallest,
+      tallestShownM: compressHeight(tallest, profile),
+      medianM: median,
+      medianShownM: compressHeight(median, profile),
+      buildingMmPerM: profile.buildingMmPerM,
+    },
     attribution: features.attribution,
   }, transfer);
 }

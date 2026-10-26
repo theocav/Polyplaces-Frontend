@@ -30,6 +30,12 @@ const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'src/frames');
 const OUT = path.join(ROOT, 'assets/models');
 
+// Mount openings to cut wider than IKEA's, in metres. The Small product is a
+// 200 mm map in this 250 mm frame; IKEA's mount opening is only ~121 mm.
+const MOUNT_OPENINGS = { 'frame-small.glb': 0.2 };
+// Width of the bevelled inner edge of the mount, moved out unchanged.
+const BEVEL = 0.012;
+
 const COMPONENT_BYTES = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 };
 const TYPE_SIZE = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
 
@@ -191,21 +197,25 @@ function surfacesAt(tris, x, z) {
   return ys;
 }
 
+// Distance from the centre, along (dx, dz), to where `covered` first holds.
+// Scans outwards from `from` in 1 mm steps so thin features aren't skipped.
+function edgeAlong(covered, dx, dz, from = 0) {
+  let lo = from, hi = from + 0.001;
+  while (!covered(dx * hi, dz * hi)) { lo = hi; hi += 0.001; if (hi > 1) throw new Error('no edge found'); }
+  for (let k = 0; k < 30; k++) {
+    const mid = (lo + hi) / 2;
+    if (covered(dx * mid, dz * mid)) hi = mid; else lo = mid;
+  }
+  return lo;
+}
+
 // The opening is where only the backing is hit; the mount starts where a
 // higher surface appears. Bisect outwards from the centre on each side.
 function measureOpening(json, bin) {
   const tris = opaqueTriangles(json, bin);
   const backY = Math.max(...surfacesAt(tris, 0.0005, 0.0005));
   const covered = (x, z) => surfacesAt(tris, x, z).some((y) => y > backY + 0.0005);
-  const edge = (dx, dz) => {
-    let lo = 0, hi = 0.01;
-    while (!covered(dx * hi, dz * hi)) { lo = hi; hi *= 1.5; if (hi > 1) throw new Error('no mount found'); }
-    for (let k = 0; k < 30; k++) {
-      const mid = (lo + hi) / 2;
-      if (covered(dx * mid, dz * mid)) hi = mid; else lo = mid;
-    }
-    return lo;
-  };
+  const edge = (dx, dz) => edgeAlong(covered, dx, dz);
   const xmin = -edge(-1, 0.0005), xmax = edge(1, 0.0005);
   const zmin = -edge(0.0005, -1), zmax = edge(0.0005, 1);
   const mountY = Math.max(...surfacesAt(tris, xmax + 0.004, 0.0005).filter((y) => y < 0.03));
@@ -213,12 +223,49 @@ function measureOpening(json, bin) {
   return { opening: { xmin: r(xmin), xmax: r(xmax), zmin: r(zmin), zmax: r(zmax) }, backY: r(backY), mountY: r(mountY) };
 }
 
+// Cuts a wider mount opening by moving vertices outwards, per axis: the
+// backing inside the opening stretches, the bevelled edge moves out intact,
+// and the flat mount band up to the frame's inner wall is compressed. The
+// frame itself (outside the inner wall) is untouched. Square openings only.
+function widenMount(json, bin, target) {
+  const { opening, mountY } = measureOpening(json, bin);
+  const tris = opaqueTriangles(json, bin);
+  const a = opening.xmax;                       // current opening half-width
+  const b = edgeAlong((x, z) => surfacesAt(tris, x, z).some((y) => y > mountY + 0.01), 1, 0.0005, a); // inner wall
+  const t = target / 2;
+  if (!(t > a && t + BEVEL < b)) throw new Error(`cannot widen opening to ${target} m`);
+  const map = (u) => {
+    const m = Math.abs(u);
+    let r;
+    if (m <= a) r = m * (t / a);
+    else if (m <= a + BEVEL) r = m + (t - a);
+    else if (m < b) r = t + BEVEL + ((m - a - BEVEL) * (b - t - BEVEL)) / (b - a - BEVEL);
+    else r = m;
+    return Math.sign(u) * r;
+  };
+  for (const mesh of json.meshes) for (const prim of mesh.primitives) {
+    if (json.materials?.[prim.material]?.alphaMode === 'BLEND') continue;
+    const acc = json.accessors[prim.attributes.POSITION];
+    const view = json.bufferViews[acc.bufferView];
+    const pos = new Float32Array(bin.buffer, bin.byteOffset + (view.byteOffset || 0) + (acc.byteOffset || 0), acc.count * 3);
+    for (let i = 0; i < pos.length; i += 3) {
+      pos[i] = map(pos[i]);
+      pos[i + 2] = map(pos[i + 2]);
+    }
+  }
+}
+
 async function main() {
   const M = await loadDecoder()();
   fs.mkdirSync(OUT, { recursive: true });
   const manifest = {};
   for (const name of fs.readdirSync(SRC).filter((f) => f.endsWith('.glb'))) {
-    const glb = await convert(M, path.join(SRC, name));
+    let glb = await convert(M, path.join(SRC, name));
+    if (MOUNT_OPENINGS[name]) {
+      const { json, bin } = readGlb(glb);
+      widenMount(json, bin, MOUNT_OPENINGS[name]);
+      glb = writeGlb(json, Buffer.from(bin));
+    }
     fs.writeFileSync(path.join(OUT, name), glb);
     const { json, bin } = readGlb(glb);
     const hash = crypto.createHash('sha256').update(glb).digest('hex').slice(0, 8);

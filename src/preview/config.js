@@ -74,6 +74,13 @@ export const PROFILE = {
   // Small print. Taller scenes are squashed uniformly to fit; terrain-only
   // scenes sit well under it and are left alone.
   maxStackMm: 25,
+  // Logarithmic building heights: h' = k * ln(1 + h / k), k in metres.
+  // Buildings well under k keep nearly their full height; towers are pulled
+  // in hard, so the 25 mm cap above squashes everything far less. null keeps
+  // heights linear. 40 m was chosen from src/proofs/building-heights.html:
+  // on central London it gave ordinary buildings their tallest on the model.
+  // Overridable per preview via config.buildingLogKneeM.
+  buildingLogKneeM: 40,
 };
 
 // Per-frame profile: horizontal and building scales for this footprint.
