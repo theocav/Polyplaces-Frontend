@@ -69,6 +69,11 @@ export const PROFILE = {
   terrainReliefMm: 9.6,
   baseMinMm: 1.92,
   buildingToXyRatio: (25 / 130) / 0.25,
+  // Part A section 10 normalises the whole stack (base, terrain and tallest
+  // building) to 25 mm. At the 150 mm preview span that is the same 1:6 as a
+  // Small print. Taller scenes are squashed uniformly to fit; terrain-only
+  // scenes sit well under it and are left alone.
+  maxStackMm: 25,
 };
 
 // Per-frame profile: horizontal and building scales for this footprint.

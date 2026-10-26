@@ -365,14 +365,15 @@ export function buildMeshes({ grid, water, footprints, sampleZ, frame, profile, 
   onProgress?.(0.9);
 
   const layers = { terrain: land, base, buildings, waterFloor: floor, waterWalls: walls };
-  // z is already in preview mm (terrain and building scales applied upstream).
+  // z is already in preview mm (terrain and building scales applied
+  // upstream); only a stack taller than maxStackMm is squashed to fit it.
   let zmax = -Infinity;
   const zmin = -profile.baseMinMm;
   for (const soup of Object.values(layers)) {
     for (let k = 2; k < soup.p.length; k += 3) if (soup.p[k] > zmax) zmax = soup.p[k];
   }
   const zRange = zmax - zmin;
-  const zs = 1;
+  const zs = zRange > profile.maxStackMm ? profile.maxStackMm / zRange : 1;
   const xy = profile.stlXyScale;
 
   const out = {};
@@ -392,6 +393,7 @@ export function buildMeshes({ grid, water, footprints, sampleZ, frame, profile, 
       widthMm: (bounds.xmax - bounds.xmin) * xy,
       depthMm: (bounds.ymax - bounds.ymin) * xy,
       heightMm: zRange * zs,
+      baseMm: profile.baseMinMm * zs,
       zScale: zs,
     },
   };

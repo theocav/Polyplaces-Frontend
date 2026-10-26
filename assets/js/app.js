@@ -2545,6 +2545,8 @@ function openPreviewDialog(box, landscape, frame) {
         bbox: box,
         config: { includeBuildings: !landscape },
         frame,
+        // Only the A4 frame rotates on the map, between 0 and 90 degrees.
+        rotated: (selectionMeta?.rotation || 0) % 180 === 90,
         onProgress(stage, value, overall) {
           if (PREVIEW_STAGE_LABELS[stage]) label.textContent = PREVIEW_STAGE_LABELS[stage];
           fill.style.width = `${Math.round(overall * 100)}%`;

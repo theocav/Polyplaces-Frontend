@@ -1,13 +1,14 @@
 // Main-thread side of the 3D preview (spec B1, B3): starts the compute worker,
 // renders its triangle buffers with three.js and reports lifecycle events.
 //
-//   const preview = createPreview(el, { bbox: [S, W, N, E], config, frame, onProgress, onWarning, onError, onReady });
+//   const preview = createPreview(el, { bbox: [S, W, N, E], config, frame, rotated, onProgress, onWarning, onError, onReady });
 //   preview.setView('room' | 'model');
 //   preview.dispose();
 //
 // `frame` ('small' | 'medium' | 'large') hangs the sculpture in that IKEA
 // frame, fitted to its mount opening, on a room wall. Without it, or if the
-// frame fails to load, only the bare model view is shown.
+// frame fails to load, only the bare model view is shown. `rotated` hangs it
+// landscape, for a frame turned 90 degrees on the map.
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -42,7 +43,7 @@ export function hasWebGL2() {
 }
 
 export function createPreview(container, opts) {
-  const { bbox, config = {}, frame, onProgress, onWarning, onError, onReady } = opts;
+  const { bbox, config = {}, frame, rotated = false, onProgress, onWarning, onError, onReady } = opts;
   let disposed = false;
   let finished = false;
   let worker = null;
@@ -222,11 +223,16 @@ export function createPreview(container, opts) {
 
     // The frame lies face up in its file (+Y front, Y = 0 back); stand it on
     // the wall so its front faces the room and its -Z edge is the top, hung
-    // a hand's width above the sideboard.
+    // a hand's width above the sideboard. A rotated selection (the A4 frame
+    // turned on the map) hangs the frame landscape.
     const frameRoot = gltf.scene;
-    const frameHeight = new THREE.Box3().setFromObject(frameRoot).getSize(new THREE.Vector3()).z;
+    const fileSize = new THREE.Box3().setFromObject(frameRoot).getSize(new THREE.Vector3());
+    const frameHeight = rotated ? fileSize.x : fileSize.z;
     frameRoot.rotation.x = Math.PI / 2;
-    frameRoot.position.set(0, ROOM.sideboardHeight + ROOM.hangGap + frameHeight / 2, 0.002);
+    const hanger = new THREE.Group();
+    hanger.add(frameRoot);
+    if (rotated) hanger.rotation.z = Math.PI / 2;
+    hanger.position.set(0, ROOM.sideboardHeight + ROOM.hangGap + frameHeight / 2, 0.002);
     frameRoot.traverse((o) => {
       if (!o.isMesh) return;
       const mats = Array.isArray(o.material) ? o.material : [o.material];
@@ -235,28 +241,31 @@ export function createPreview(container, opts) {
       o.castShadow = true;
       o.receiveShadow = true;
     });
-    scene.add(frameRoot);
+    scene.add(hanger);
 
-    // Fit the sculpture to the mount opening (frame-local metres), its base
-    // resting on the backing board behind the mount.
+    // Fit the sculpture inside the mount opening (frame-local metres) at one
+    // uniform scale, so a shape mismatch leaves a margin rather than
+    // stretching the map. Its base rests on the backing board behind the
+    // mount. In a landscape-hung frame the holder turns back so north stays up.
     const { opening, backY } = frameInfo;
+    const openX = opening.xmax - opening.xmin;
+    const openZ = opening.zmax - opening.zmin;
+    const [openW, openH] = rotated ? [openZ, openX] : [openX, openZ];
+    const s = Math.min(openW / msg.size.widthMm, openH / msg.size.depthMm);
+    const holder = new THREE.Group();
+    holder.position.set((opening.xmin + opening.xmax) / 2, backY, (opening.zmin + opening.zmax) / 2);
+    if (rotated) holder.rotation.y = -Math.PI / 2;
     const sculpture = buildSculpture(msg, material);
-    const sx = (opening.xmax - opening.xmin) / msg.size.widthMm;
-    const sn = (opening.zmax - opening.zmin) / msg.size.depthMm;
-    const sz = (sx + sn) / 2;
-    sculpture.scale.set(sx, sn, sz);
-    sculpture.position.set(
-      (opening.xmin + opening.xmax) / 2,
-      backY + PROFILE.baseMinMm * sz,
-      (opening.zmin + opening.zmax) / 2,
-    );
-    frameRoot.add(sculpture);
+    sculpture.scale.setScalar(s);
+    sculpture.position.y = msg.size.baseMm * s;
+    holder.add(sculpture);
+    frameRoot.add(holder);
 
     // Soft window light from the front left; a broad fill keeps shadows gentle.
     scene.add(new THREE.HemisphereLight(0xfffaf2, 0x9a8670, 1.7));
     const sun = new THREE.DirectionalLight(0xfff4e6, 1.3);
     sun.position.set(-1.6, 2.6, 3.2);
-    sun.target.position.copy(frameRoot.position);
+    sun.target.position.copy(hanger.position);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.radius = 6;
@@ -265,7 +274,8 @@ export function createPreview(container, opts) {
     Object.assign(sun.shadow.camera, { left: -1.2, right: 1.2, top: 1.2, bottom: -1.6, near: 0.5, far: 8 });
     scene.add(sun, sun.target);
 
-    const frameBox = new THREE.Box3().setFromObject(frameRoot);
+    hanger.updateMatrixWorld(true);
+    const frameBox = new THREE.Box3().setFromObject(hanger);
     const frameSize = frameBox.getSize(new THREE.Vector3());
     const frameCenter = frameBox.getCenter(new THREE.Vector3());
     const aspect = (container.clientWidth || 1) / (container.clientHeight || 1);
