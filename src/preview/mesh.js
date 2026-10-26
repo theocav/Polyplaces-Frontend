@@ -329,15 +329,9 @@ function buildBase(grid, bodies, rect, profile) {
   return base;
 }
 
-const GREY = [0xb4 / 255, 0xb4 / 255, 0xb4 / 255];
-const TAN = [0xc8 / 255, 0xa0 / 255, 0x78 / 255];
-
 function buildBuildings(footprints) {
   const soup = new Soup();
-  soup.c = [];
   for (const b of footprints) {
-    const col = b.heightProvided ? GREY : TAN;
-    const before = soup.count;
     for (const poly of b.geom) {
       const { coords, holes } = flattenPolygon(poly);
       const idx = earcut(coords, holes.length ? holes : undefined, 2);
@@ -354,7 +348,6 @@ function buildBuildings(footprints) {
         }
       }
     }
-    for (let k = before * 3; k < soup.count * 3; k++) soup.c.push(...col);
   }
   return soup;
 }

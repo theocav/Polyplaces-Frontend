@@ -1036,6 +1036,22 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
   overflow:hidden;
 }
 .pv-canvas{position:absolute;inset:0;cursor:grab}
+.pv-views{
+  position:absolute;top:12px;left:12px;z-index:1;
+  display:flex;padding:3px;gap:2px;
+  background:rgba(255,255,255,0.88);
+  border:1px solid var(--border);border-radius:999px;
+  backdrop-filter:blur(4px);
+}
+.pv-views[hidden]{display:none}
+.pv-view{
+  padding:7px 14px;border:0;border-radius:999px;
+  font-family:var(--sans);font-size:12px;font-weight:500;
+  background:transparent;color:var(--mid);cursor:pointer;
+  transition:background 0.2s,color 0.2s;
+}
+.pv-view:hover{color:var(--ink)}
+.pv-view[aria-pressed="true"]{background:var(--ink);color:var(--white)}
 .pv-canvas:active{cursor:grabbing}
 .pv-loading{
   position:absolute;inset:0;

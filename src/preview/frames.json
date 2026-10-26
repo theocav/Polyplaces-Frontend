@@ -1,0 +1,35 @@
+{
+  "large": {
+    "url": "/assets/models/frame-large.glb?v=ccdf1bd1",
+    "opening": {
+      "xmin": -0.14505,
+      "xmax": 0.14502,
+      "zmin": -0.14502,
+      "zmax": 0.14502
+    },
+    "backY": 0.00934,
+    "mountY": 0.01059
+  },
+  "medium": {
+    "url": "/assets/models/frame-medium.glb?v=6bb2a8a1",
+    "opening": {
+      "xmin": -0.1,
+      "xmax": 0.0999,
+      "zmin": -0.14509,
+      "zmax": 0.14508
+    },
+    "backY": 0.01101,
+    "mountY": 0.01408
+  },
+  "small": {
+    "url": "/assets/models/frame-small.glb?v=2cc7943a",
+    "opening": {
+      "xmin": -0.0604,
+      "xmax": 0.0604,
+      "zmin": -0.0604,
+      "zmax": 0.0604
+    },
+    "backY": 0.0089,
+    "mountY": 0.01021
+  }
+}

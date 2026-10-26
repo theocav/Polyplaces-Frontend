@@ -2425,6 +2425,19 @@ function previewModuleUrl() {
   return meta?.content || '/assets/js/preview/preview.js';
 }
 
+// Which IKEA frame the room mock-up hangs the sculpture in. Small, A4 and
+// Large match the three products; custom sizes take the nearest shape.
+function previewFrameFor(product) {
+  const name = String(product?.name || '').toLowerCase();
+  if (name.includes('small')) return 'small';
+  if (name.includes('medium') || name.includes('a4')) return 'medium';
+  if (name.includes('large')) return 'large';
+  const ratio = Number(product?.aspectRatio) || 1;
+  if (ratio > 1.2 || ratio < 1 / 1.2) return 'medium';
+  const widthMm = Number(product?.customWidthMm) || Number(product?.sizeCode) / CUSTOM_MAP_SCALE;
+  return widthMm <= 220 ? 'small' : 'large';
+}
+
 function offerPreview() {
   if (!selectedProduct || !bbox || !selectionMeta) return;
   const b = selectionMeta.bbox;
@@ -2435,10 +2448,10 @@ function offerPreview() {
     reviewSelection();
     return;
   }
-  openPreviewDialog(box, !!selectionMeta.landscape);
+  openPreviewDialog(box, !!selectionMeta.landscape, previewFrameFor(selectedProduct));
 }
 
-function openPreviewDialog(box, landscape) {
+function openPreviewDialog(box, landscape, frame) {
   const lastFocused = document.activeElement;
   let preview = null;
   let releaseTrap = null;
@@ -2493,10 +2506,14 @@ function openPreviewDialog(box, landscape) {
     card.querySelector('.pv-ask').outerHTML =
       '<div class="pv-head">' +
         '<h2 class="nl-title" id="pv-title">Your sculpture in 3D</h2>' +
-        '<p class="pv-sub">Drag to turn it, scroll or pinch to zoom. A guide to shape and scale - you&rsquo;ll still approve a proof before we make anything.</p>' +
+        '<p class="pv-sub">Drag to look around, scroll or pinch to zoom. A guide to shape and scale - you&rsquo;ll still approve a proof before we make anything.</p>' +
       '</div>' +
       '<div class="pv-stage">' +
         '<div class="pv-canvas" id="pv-canvas"></div>' +
+        '<div class="pv-views" id="pv-views" role="group" aria-label="Preview view" hidden>' +
+          '<button type="button" class="pv-view" data-view="room" aria-pressed="true">In a room</button>' +
+          '<button type="button" class="pv-view" data-view="model" aria-pressed="false">Close-up</button>' +
+        '</div>' +
         '<div class="pv-loading" id="pv-loading" role="status" aria-live="polite">' +
           '<span class="pv-loading-label" id="pv-loading-label">Gathering map data</span>' +
           '<span class="pv-bar" aria-hidden="true"><span class="pv-bar-fill" id="pv-bar-fill"></span></span>' +
@@ -2527,12 +2544,23 @@ function openPreviewDialog(box, landscape) {
       preview = mod.createPreview(card.querySelector('#pv-canvas'), {
         bbox: box,
         config: { includeBuildings: !landscape },
+        frame,
         onProgress(stage, value, overall) {
           if (PREVIEW_STAGE_LABELS[stage]) label.textContent = PREVIEW_STAGE_LABELS[stage];
           fill.style.width = `${Math.round(overall * 100)}%`;
         },
-        onReady() {
+        onReady(info) {
           loading.hidden = true;
+          // The view switch only matters when the room mock-up loaded.
+          const views = card.querySelector('#pv-views');
+          if (!info?.views?.includes('room')) return;
+          views.hidden = false;
+          views.querySelectorAll('[data-view]').forEach((btn) => {
+            btn.onclick = () => {
+              preview.setView(btn.dataset.view);
+              views.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+            };
+          });
         },
         onError(code) {
           const messages = {

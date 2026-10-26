@@ -61,11 +61,12 @@ export const PROFILE = {
   // (where a 100 m base plate, ~19 mm, dwarfed ~6 mm of terrain, and wide
   // frames came out metres across so any relief vanished). Every preview is
   // scaled so its longer side is previewSpanMm; terrain relief is stretched
-  // to the old base thickness and the base cut to a tenth of it. Buildings
+  // to half the old base thickness and the base cut to a tenth of it. Water
+  // pockets keep their 1.5 terrain-metre depth, so they halve with it. Buildings
   // keep the old stack's height-to-width ratio (25/130 mm per m against
   // 0.25 mm/m), scaled with the footprint.
   previewSpanMm: 150,
-  terrainReliefMm: 19.2,
+  terrainReliefMm: 9.6,
   baseMinMm: 1.92,
   buildingToXyRatio: (25 / 130) / 0.25,
 };
