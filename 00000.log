@@ -1,0 +1,129 @@
+cli mode, Current OrcaSlicer Version 2.4.2
+Will start to read model file now, file count :1
+allow_multicolor_oneplate 1, allow_rotations 1 skip_modified_gcodes 0 avoid_extrusion_cali_region 0 loaded_filament_ids size 0, clone_objects size 0, skip_useless_pick 0, allow_newer_file 1, allow_mix_temp 0
+plate_to_slice=1, normative_check=1, use_first_fila_as_default=0
+read model file:C:\Users\theoc\Downloads\scene_mapterhorn.stl
+TriangleMesh::repair() started
+TriangleMesh::repair() finished
+object scene_mapterhorn.stl, id :5, from stl or other 3mf
+1914: not support to slice plate 1, reset to 0
+Slic3r::CLI::run:before load settings, file count=2
+Slic3r::CLI::run::<lambda_e4e3d71a1f1ff4e2a068f554347fe46d>::operator ():load setting file C:\Users\theoc\AppData\Roaming\OrcaSlicer\system\Sovol\machine\Sovol SV08 0.6 nozzle.json, with rule 1
+no substitutions performed from file C:\Users\theoc\AppData\Roaming\OrcaSlicer\system\Sovol\machine\Sovol SV08 0.6 nozzle.json
+loaded machine config C:\Users\theoc\AppData\Roaming\OrcaSlicer\system\Sovol\machine\Sovol SV08 0.6 nozzle.json, type Sovol SV08 0.6 nozzle, name system, inherits Sovol SV08 0.6 nozzle, printer_model_id 
+Slic3r::CLI::run::<lambda_e4e3d71a1f1ff4e2a068f554347fe46d>::operator ():load setting file C:\Users\theoc\AppData\Roaming\OrcaSlicer\system\Sovol\process\0.30mm Standard @Sovol SV08 0.6 nozzle.json, with rule 1
+no substitutions performed from file C:\Users\theoc\AppData\Roaming\OrcaSlicer\system\Sovol\process\0.30mm Standard @Sovol SV08 0.6 nozzle.json
+loaded process config C:\Users\theoc\AppData\Roaming\OrcaSlicer\system\Sovol\process\0.30mm Standard @Sovol SV08 0.6 nozzle.json, type 0.30mm Standard @Sovol SV08 0.6 nozzle, name system, inherits 0.30mm Standard @Sovol SV08 0.6 nozzle
+Slic3r::CLI::run::<lambda_e4e3d71a1f1ff4e2a068f554347fe46d>::operator ():load setting file C:\Users\theoc\AppData\Roaming\OrcaSlicer\system\OrcaFilamentLibrary\filament\Overture\Overture PLA @System.json, with rule 1
+no substitutions performed from file C:\Users\theoc\AppData\Roaming\OrcaSlicer\system\OrcaFilamentLibrary\filament\Overture\Overture PLA @System.json
+loaded filament 1 from file C:\Users\theoc\AppData\Roaming\OrcaSlicer\system\OrcaFilamentLibrary\filament\Overture\Overture PLA @System.json, type system, name Overture PLA @System, inherits 
+current printer , new printer Sovol SV08 0.6 nozzle, current process , new process 0.30mm Standard @Sovol SV08 0.6 nozzle
+current printer inherits , new printer inherits Sovol SV08 0.6 nozzle, current process inherits , new process inherits 0.30mm Standard @Sovol SV08 0.6 nozzle
+index 0, new print compatible printer Sovol SV08 0.6 nozzle
+new printer Sovol SV08 0.6 nozzle, inherited from Sovol SV08 0.6 nozzle, new process 0.30mm Standard @Sovol SV08 0.6 nozzle, inherited from 0.30mm Standard @Sovol SV08 0.6 nozzle ,compatible 1
+update printer config to newest, different size 0, different_settings: 
+load_default_gcodes_to_config, change_filament_gcode: 
+load_default_gcodes_to_config, layer_change_gcode: 
+load_default_gcodes_to_config, machine_end_gcode: END_PRINT
+load_default_gcodes_to_config, machine_pause_gcode: PAUSE
+load_default_gcodes_to_config, machine_start_gcode: G28
+G90
+G1 X0 F9000
+G1 Y20
+G1 Z0.600 F600
+G1 Y0 F9000
+START_PRINT
+G90
+G1 X0 F9000
+G1 Y20
+G1 Z0.600 F600
+G1 Y0 F9000
+M400
+G91
+M83
+M140 S[bed_temperature_initial_layer_single] ;set bed temp
+M104 S[nozzle_temperature_initial_layer] ;set extruder temp
+M190 S[bed_temperature_initial_layer_single] ;wait for bed temp
+M109 S[nozzle_temperature_initial_layer];wait for extruder temp
+G1 E25 F300
+G4 P1000
+G1 E-0.200 Z5 F600
+G1 X88.000 F9000
+G1 Z-5.000 F600
+G1 X87.000 E20.88 F1800
+G1 X87.000 E13.92 F1800
+G1 Y1 E0.16 F1800
+G1 X-87.000 E13.92 F1800
+G1 X-87.000 E20.88 F1800
+G1 Y1 E0.24 F1800
+G1 X87.000 E20.88 F1800
+G1 X87.000 E13.92 F1800
+G1 E-0.200 Z1 F600
+M400
+load_default_gcodes_to_config, template_custom_gcode: 
+load_default_gcodes_to_config, printing_by_object_gcode: 
+load_default_gcodes_to_config, before_layer_change_gcode: TIMELAPSE_TAKE_FRAME
+G92 E0
+load_default_gcodes_to_config, time_lapse_gcode: 
+load_default_gcodes_to_config, wrapping_detection_gcode: 
+update_full_config: config keys count 48
+load a new printer, update all the keys, different_settings: 
+check printer cli safe params, current_printer_name , new_printer_name Sovol SV08 0.6 nozzle, printer_model Sovol SV08
+line 2877 , will parse file C:\Program Files\OrcaSlicer\resources/profiles/BBL/cli_config.json
+can not find key Sovol SV08 in the file
+update process config to newest, different size 0, different_settings: 
+update_full_config: config keys count 107
+load a new process, update all the keys, different_settings: 
+load_default_gcodes_to_config, filament_start_gcodes:  
+load_default_gcodes_to_config, filament_end_gcode:  
+update filament 1's config to newest, different size 0, name Overture PLA @System, different_settings 
+skip scalar option inherits from filament 1: Overture PLA @System
+no filament colors found in projects
+total 1 models, 0 objects
+3657, remove_wrapping_detect 0, old value 0
+Slic3r::GUI::PartPlate::set_index: plate_id update from 0 to 0
+Slic3r::GUI::PartPlate::set_index: plate_id update from 0 to 1
+translate_old 0, shrink_to_new_bed 0, old bed size {350, 350, 345}
+Slic3r::GUI::PartPlateList::reset_size:before size: plate_width 0, plate_depth 0, plate_height 0
+Slic3r::GUI::PartPlateList::reset_size:after size: plate_width 350, plate_depth 350, plate_height 345
+Slic3r::GUI::PartPlate::set_pos_and_size: plate_id 0, before, origin {0,0,0}, plate_width 0, plate_depth 0, plate_height 0
+Slic3r::GUI::PartPlate::set_pos_and_size: with_instance_move 0, after, origin {0,0,0}, plate_width 350, plate_depth 350, plate_height 345
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::set_pos_and_size: plate_id 1, before, origin {0,0,0}, plate_width 0, plate_depth 0, plate_height 0
+Slic3r::GUI::PartPlate::set_pos_and_size: with_instance_move 0, after, origin {420,0,0}, plate_width 350, plate_depth 350, plate_height 345
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 1 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 1 , update slice result from 0 to 0
+will start transforms, commands count 0
+finished model pre-process commands
+Before process command, no need to orient, object id :5
+before arrange, need_arrange=1, duplicate_count 0, filament_color_changed 0
+Slic3r::GUI::PartPlateList::preprocess_arrange_polygon: not in any plates, bed_idx 0, translation(x) 0, (y) 0
+arrange bedpts:1600000 1600000, 348400000   1600000, 348400000 348400000,   1600000 348400000
+Arrange full params: {"min_obj_distance":0,"accuracy":1.000000,"parallel":1,"allow_rotations":1,"do_final_align":1,"allow_multi_materials_on_same_plate":1,"avoid_extrusion_cali_region":0,"is_seq_print":0,"bed_shrink_x":1.600000,"bed_shrink_y":1.600000,"brim_skirt_distance":0.600000,"clearance_height_to_rod":40.000000,"clearance_height_to_lid":120.000000,"clearance_radius":40.000000,"printable_height":345.000000,
+arrange: items selected before arranging: 1
+scene_mapterhorn.stl, extruder: 1, bed: 0, trans: 0 0
+arrange: items unselected before arranging: 0
+start 1 th arranging...
+arrange progress: initial order: scene_mapterhorn.stl, p=0, bed_temp=35, height=25, area=2.52003e+17
+finished 1 th arranging...
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 1 , update slice result from 0 to 0
+Slic3r::GUI::PartPlateList::postprocess_bed_index_for_selected: bed_idx -1, locked_plate -1, translation(x) 0, (y) 0
+Slic3r::GUI::PartPlateList::postprocess_bed_index_for_selected: can not be arranged inside plate!
+after arrange: name=scene_mapterhorn.stl,bed_id -1, trans {0,0}
+Slic3r::GUI::PartPlateList::postprocess_arrange_polygon: bed_idx -1, selected 1, translation(x) 0, (y) 0
+Slic3r::GUI::PartPlateList::rebuild_plates_after_arrangement:before rebuild, plates count 1, recycle_plates 1
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 1 , update slice result from 0 to 0
+Slic3r::GUI::PartPlateList::reload_all_objects: m_model->objects.size() is 1
+Slic3r::GUI::PartPlateList::rebuild_plates_after_arrangement:after rebuild, plates count 1
+Need to slice for plate 1, total plate count 1 partplates!
+Plate 1: pre_check 0, start
+BuildVolume printable_area clasified as: Rectangle
+Slic3r::Model::update_print_volume_state, print_volume {0, 0, 0} to {350, 350, 345}, got 0 printable istances
+plate 1: Nothing to be sliced, Either the print is empty or no object is fully inside the print volume before apply.
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 1 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 1 , update slice result from 0 to 0
