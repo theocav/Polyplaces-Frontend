@@ -35,6 +35,9 @@ const STAGE_WEIGHTS = { terrain: 0.35, buildings: 0.3, water: 0.1, footprints: 0
 // The sculpture prints in one matte white, so every layer shares it.
 const SCULPTURE_COLOR = 0xeee8dd;
 
+// Shadow map size for the room light; phones get a smaller one.
+const SHADOW_MAP = typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches ? 2048 : 4096;
+
 const ROOM = {
   background: 0xd6cdc0, // beyond the wall's edges, rarely seen
   hangGap: 0.24, // sideboard top to frame bottom, metres
@@ -202,7 +205,7 @@ export function createPreview(container, opts) {
     controls.minDistance = span * 0.15;
     controls.maxDistance = span * 4;
     controls.maxPolarAngle = Math.PI * 0.49;
-    return { scene, camera, controls, aoRadius: span * 0.02 };
+    return { scene, camera, controls, sculpture, aoPerDistance: (span * 0.02) / camera.position.distanceTo(center) };
   }
 
   function roomView(msg, material, env) {
@@ -232,6 +235,7 @@ export function createPreview(container, opts) {
       const sh = h / msg.size.depthMm;
       const sv = (sw + sh) / 2;
       const sculpture = buildSculpture(msg, material);
+      sculpture.name = 'sculpture';
       // Sculpture axes before its own rotation: x east, y north, z up.
       sculpture.scale.set(sw, sh, sv);
       sculpture.position.y = msg.size.baseMm * sv;
@@ -287,7 +291,11 @@ export function createPreview(container, opts) {
     let current = null;
     let shown = false;
     let request = 0;
-    async function hang(colour) {
+    // `from` is the close-up view when a frame is picked there: the room
+    // camera starts where the close-up camera sits relative to the piece,
+    // then pulls back to the wall, so the piece appears to settle into its
+    // frame rather than the view cutting away.
+    async function hang(colour, from) {
       const ticket = ++request;
       const gltf = colour ? await loadFrame(colour) : null;
       // A later choice wins if the user clicks quickly through colours.
@@ -296,7 +304,20 @@ export function createPreview(container, opts) {
       if (current) scene.remove(current);
       current = next;
       scene.add(current);
-      frameView(gltf ? 'wall' : 'desk', !shown);
+      if (from && shown && !reducedMotion()) {
+        current.updateMatrixWorld(true);
+        from.sculpture.updateMatrixWorld(true);
+        const toRoom = current.getObjectByName('sculpture').matrixWorld.clone()
+          .multiply(from.sculpture.matrixWorld.clone().invert());
+        cancelAnimationFrame(glide);
+        camera.position.copy(from.camera.position).applyMatrix4(toRoom);
+        controls.target.copy(from.controls.target).applyMatrix4(toRoom);
+        camera.lookAt(controls.target);
+        enterFrom(from);
+        frameView('wall', false, 1200);
+      } else {
+        frameView(gltf ? 'wall' : 'desk', !shown);
+      }
       shown = true;
       dirty = true;
       return gltf ? colour : null;
@@ -309,7 +330,11 @@ export function createPreview(container, opts) {
     sun.position.set(-2.4, 2.6, 1.7);
     sun.target.position.copy(centre).add(new THREE.Vector3(0.1, -0.3, 0.1));
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    // The shadow map covers only the middle of the cone (the sideboard top
+    // and the hung piece) rather than the whole wall: about 0.5 mm per texel
+    // instead of 2.5 mm, so small buildings cast clean shadows up close.
+    sun.shadow.focus = 0.35;
+    sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
     sun.shadow.bias = -0.0002;
     sun.shadow.normalBias = 0.003;
     sun.shadow.camera.near = 1;
@@ -333,30 +358,51 @@ export function createPreview(container, opts) {
         target: wallTarget,
         position: wallTarget.clone().add(new THREE.Vector3(0.22, 0.02, 1).multiplyScalar(wallDist)),
         polar: [Math.PI * 0.3, Math.PI * 0.62],
+        reach: new THREE.Vector3(hangW * 0.75, hangH * 0.75, 0.05),
       },
       desk: {
         target: deskTarget,
         position: deskTarget.clone().add(new THREE.Vector3(0.18, 0.62, 0.78).normalize().multiplyScalar(deskDist)),
         polar: [Math.PI * 0.12, Math.PI * 0.47],
+        reach: new THREE.Vector3(Math.max(bareW, bareH) * 0.75, 0.08, Math.max(bareW, bareH) * 0.6),
       },
     };
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.minDistance = Math.max(hangW, hangH) * 0.35;
+    const minDistance = Math.max(hangW, hangH) * 0.35;
+    controls.minDistance = minDistance;
     controls.maxDistance = 3.2;
     controls.minAzimuthAngle = -Math.PI * 0.38;
     controls.maxAzimuthAngle = Math.PI * 0.38;
-    controls.enablePan = false;
+    controls.screenSpacePanning = true;
+
+    // Panning is on a leash: the target may wander a little way from the
+    // current pose's target (enough to inspect any corner of the piece) and
+    // the camera moves with it, so the scene can't be lost.
+    const leash = { centre: new THREE.Vector3(), reach: new THREE.Vector3() };
+    controls.addEventListener('change', () => {
+      const t = controls.target;
+      const min = leash.centre.clone().sub(leash.reach);
+      const max = leash.centre.clone().add(leash.reach);
+      const clamped = t.clone().clamp(min, max);
+      if (!clamped.equals(t)) {
+        camera.position.add(clamped.clone().sub(t));
+        t.copy(clamped);
+      }
+    });
 
     // Glides between poses when a frame is added or removed; instant the
-    // first time. Orbit limits switch once the move lands.
+    // first time. Orbit limits and the pan leash switch once the move lands.
     let glide = 0;
-    function frameView(name, instant) {
+    function frameView(name, instant, duration = 700) {
       const pose = poses[name];
       const fromPos = camera.position.clone();
       const fromTarget = controls.target.clone();
       const land = () => {
         [controls.minPolarAngle, controls.maxPolarAngle] = pose.polar;
+        leash.centre.copy(pose.target);
+        leash.reach.copy(pose.reach);
+        controls.minDistance = minDistance;
         controls.enabled = active === 'room';
         dirty = true;
       };
@@ -371,9 +417,11 @@ export function createPreview(container, opts) {
       controls.enabled = false;
       controls.minPolarAngle = 0;
       controls.maxPolarAngle = Math.PI;
+      leash.reach.setScalar(Infinity);
+      controls.minDistance = 0;
       const start = performance.now();
       const step = (now) => {
-        const t = Math.min((now - start) / 700, 1);
+        const t = Math.min((now - start) / duration, 1);
         const k = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
         camera.position.lerpVectors(fromPos, pose.position, k);
         controls.target.lerpVectors(fromTarget, pose.target, k);
@@ -384,7 +432,7 @@ export function createPreview(container, opts) {
       };
       glide = requestAnimationFrame(step);
     }
-    return { scene, camera, controls, aoRadius: 0.004, hang };
+    return { scene, camera, controls, aoPerDistance: 0.004, hang };
   }
 
   function render(msg, gltf) {
@@ -431,14 +479,24 @@ export function createPreview(container, opts) {
     }
     // Ambient occlusion darkens the ground at each building's foot, so the
     // buildings stay distinct from the streets even when seen head-on, where
-    // tops and ground otherwise catch identical light. Radius is in each
-    // view's own units (mm for the close-up, metres for the room).
+    // tops and ground otherwise catch identical light. Its reach follows the
+    // viewing distance (aoPerDistance), so it stays a tight edge shade at any
+    // zoom instead of smearing into blotches up close.
     for (const v of Object.values(views)) {
       v.composer = new EffectComposer(renderer);
       v.composer.addPass(new RenderPass(v.scene, v.camera));
       const ao = new GTAOPass(v.scene, v.camera, 1, 1);
-      ao.updateGtaoMaterial({ radius: v.aoRadius, distanceFallOff: 1, thickness: v.aoRadius, samples: 12 });
+      // The sculpture's faces aren't consistently wound (it renders
+      // double-sided), so the AO depth/normal prepass must draw both sides
+      // too. Front-only, it drops inward-wound walls and shades buildings
+      // with the depth of whatever stands behind them, which reads as the
+      // buildings being see-through.
+      ao.normalMaterial.side = THREE.DoubleSide;
+      ao.updateGtaoMaterial({ distanceFallOff: 1, samples: 16 });
+      ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
       ao.blendIntensity = 1;
+      v.ao = ao;
+      v.aoRadius = -1;
       v.composer.addPass(ao);
       v.composer.addPass(new OutputPass());
       disposables.push(v.composer, ao);
@@ -475,6 +533,11 @@ export function createPreview(container, opts) {
       const moved = v.controls.update();
       if (moved || dirty) {
         dirty = false;
+        const r = v.camera.position.distanceTo(v.controls.target) * v.aoPerDistance;
+        if (Math.abs(r - v.aoRadius) > v.aoRadius * 0.02) {
+          v.ao.updateGtaoMaterial({ radius: r, thickness: r });
+          v.aoRadius = r;
+        }
         v.composer.render();
       }
     });
@@ -488,12 +551,35 @@ export function createPreview(container, opts) {
     dirty = true;
   }
 
+  const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Switches to the room under a fading still of the view being left, so
+  // the change of scene, light and background dissolves instead of cutting.
+  function enterFrom(from) {
+    from.composer.render();
+    const still = document.createElement('canvas');
+    still.width = renderer.domElement.width;
+    still.height = renderer.domElement.height;
+    still.getContext('2d').drawImage(renderer.domElement, 0, 0);
+    Object.assign(still.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none' });
+    container.appendChild(still);
+    setView('room');
+    still.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, easing: 'ease-out', fill: 'forwards' })
+      .finished.finally(() => still.remove());
+  }
+
   return {
     setView,
     // Resolves to the colour actually hung (null if unframed or it failed).
+    // Picking a frame from the close-up carries the view into the room.
     async setFrame(colour) {
-      return views.room ? views.room.hang(colour || null) : null;
+      if (!views.room) return null;
+      const from = colour && active === 'model' ? views.model : null;
+      const hung = await views.room.hang(colour || null, from);
+      if (from && hung && active !== 'room') setView('room');
+      return hung;
     },
+    get view() { return active; },
     dispose() {
       if (disposed) return;
       disposed = true;

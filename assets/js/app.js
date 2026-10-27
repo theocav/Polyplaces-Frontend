@@ -2609,6 +2609,8 @@ function openPreviewDialog(box, landscape) {
           bar.classList.add('pv-frames--busy');
           await preview?.setFrame(colour);
           bar.classList.remove('pv-frames--busy');
+          // A frame picked in the close-up carries the view into the room.
+          card.querySelectorAll('#pv-views [data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === preview?.view)));
         };
       });
     }
