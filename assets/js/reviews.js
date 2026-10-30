@@ -318,8 +318,9 @@
           });
       })
       .then(function (data) {
-        if (typeof fbq === 'function') fbq('track', 'SubmitApplication', { content_name: 'Review' });
-        if (typeof window.ppTrackGA === 'function') window.ppTrackGA('review_submitted', { rating: rating });
+        if (typeof window.ppTrack === 'function') {
+          window.ppTrack('review_submitted', { rating: rating }, { metaParams: { content_name: 'Review' } });
+        }
         showStatus('success', (data && data.message) ||
           'Thanks — your review will appear once we’ve checked it.');
         form.reset();

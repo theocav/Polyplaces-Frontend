@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-29T09:46:42Z",
+  "title": "Design System: Polyplaces",
+  "extensions": {
+    "colorMeta": {
+      "burnt-terracotta": {
+        "role": "primary",
+        "displayName": "Burnt Terracotta",
+        "canonical": "oklch(60% 0.16 35)",
+        "tonalRamp": ["oklch(18% 0.05 35)", "oklch(28% 0.09 35)", "oklch(38% 0.12 35)", "oklch(48% 0.15 35)", "oklch(60% 0.16 35)", "oklch(72% 0.13 35)", "oklch(84% 0.08 35)", "oklch(95% 0.02 35)"]
+      },
+      "terracotta-light": {
+        "role": "primary-hover",
+        "displayName": "Terracotta Light",
+        "canonical": "oklch(66% 0.17 35)",
+        "tonalRamp": ["oklch(20% 0.05 35)", "oklch(30% 0.09 35)", "oklch(42% 0.13 35)", "oklch(54% 0.16 35)", "oklch(66% 0.17 35)", "oklch(77% 0.13 35)", "oklch(87% 0.08 35)", "oklch(96% 0.02 35)"]
+      },
+      "terracotta-wash": {
+        "role": "primary-tint",
+        "displayName": "Terracotta Wash",
+        "canonical": "oklch(97% 0.02 35)",
+        "tonalRamp": ["oklch(40% 0.1 35)", "oklch(55% 0.12 35)", "oklch(70% 0.1 35)", "oklch(84% 0.06 35)", "oklch(90% 0.04 35)", "oklch(94% 0.03 35)", "oklch(97% 0.02 35)", "oklch(99% 0.005 35)"]
+      },
+      "warm-paper": {
+        "role": "neutral-bg",
+        "displayName": "Warm Paper",
+        "canonical": "oklch(96% 0.01 75)",
+        "tonalRamp": ["oklch(15% 0.005 75)", "oklch(28% 0.008 75)", "oklch(42% 0.01 75)", "oklch(58% 0.012 75)", "oklch(74% 0.012 75)", "oklch(88% 0.01 75)", "oklch(96% 0.01 75)", "oklch(99% 0.005 75)"]
+      },
+      "warm-paper-deep": {
+        "role": "neutral-bg-alt",
+        "displayName": "Warm Paper Deep",
+        "canonical": "oklch(92% 0.015 70)",
+        "tonalRamp": ["oklch(14% 0.005 70)", "oklch(27% 0.01 70)", "oklch(40% 0.012 70)", "oklch(56% 0.014 70)", "oklch(72% 0.015 70)", "oklch(84% 0.015 70)", "oklch(92% 0.015 70)", "oklch(98% 0.008 70)"]
+      },
+      "near-black-ink": {
+        "role": "neutral-text-strong",
+        "displayName": "Near-Black Ink",
+        "canonical": "oklch(20% 0.015 45)",
+        "tonalRamp": ["oklch(12% 0.01 45)", "oklch(20% 0.015 45)", "oklch(32% 0.02 45)", "oklch(45% 0.02 45)", "oklch(58% 0.018 45)", "oklch(72% 0.014 45)", "oklch(86% 0.008 45)", "oklch(97% 0.003 45)"]
+      },
+      "warm-charcoal": {
+        "role": "neutral-text",
+        "displayName": "Warm Charcoal",
+        "canonical": "oklch(38% 0.02 50)",
+        "tonalRamp": ["oklch(15% 0.01 50)", "oklch(26% 0.015 50)", "oklch(38% 0.02 50)", "oklch(50% 0.02 50)", "oklch(63% 0.018 50)", "oklch(76% 0.014 50)", "oklch(88% 0.008 50)", "oklch(97% 0.003 50)"]
+      },
+      "warm-taupe": {
+        "role": "neutral-text-quiet",
+        "displayName": "Warm Taupe",
+        "canonical": "oklch(53% 0.02 55)",
+        "tonalRamp": ["oklch(18% 0.01 55)", "oklch(30% 0.015 55)", "oklch(42% 0.018 55)", "oklch(53% 0.02 55)", "oklch(65% 0.018 55)", "oklch(77% 0.014 55)", "oklch(89% 0.008 55)", "oklch(97% 0.003 55)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero headline only; pairs a roman clause with a dimmed italic em clause." },
+      "headline": { "displayName": "Headline", "purpose": "Section headers and store title." },
+      "title": { "displayName": "Title", "purpose": "Product names, order totals, card titles — Fraunces stepped to regular weight." },
+      "body": { "displayName": "Body", "purpose": "All paragraph copy." },
+      "label": { "displayName": "Label", "purpose": "Uppercase tracked eyebrows, tags, and form field labels." }
+    },
+    "shadows": [
+      { "name": "hover-lift", "value": "0 16px 40px rgba(26,23,20,0.1)", "purpose": "Product/review card hover lift." },
+      { "name": "floating-control", "value": "0 4px 18px rgba(26,23,20,0.12)", "purpose": "Pill-shaped controls docked over the map (search, frame controls)." },
+      { "name": "drawer", "value": "-20px 0 50px rgba(26,23,20,0.18)", "purpose": "Cart drawer and mobile nav drawer sliding in." },
+      { "name": "modal", "value": "0 20px 60px rgba(26,23,20,0.35)", "purpose": "Cookie consent and newsletter overlay cards." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "0.2s ease", "purpose": "Default hover/state transition (color, border, opacity, transform)." },
+      { "name": "ease-drawer", "value": "0.25s ease", "purpose": "Drawer slide and overlay fade." },
+      { "name": "ease-reveal", "value": "0.6s ease", "purpose": "Scroll-reveal entrance for sections." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "640px" },
+      { "name": "tablet", "value": "900px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Terracotta-filled call to action (add to cart, order, hero primary CTA).",
+      "html": "<button class=\"ds-btn-primary\">Start your piece</button>",
+      "css": ".ds-btn-primary { display: inline-block; background: #c94f2c; color: #ffffff; font-family: 'DM Sans', system-ui, sans-serif; font-size: 13px; font-weight: 500; padding: 13px 28px; border: none; border-radius: 2px; cursor: pointer; transition: background 0.2s, transform 0.2s; } .ds-btn-primary:hover { background: #e8684a; transform: translateY(-1px); } .ds-btn-primary:focus-visible { outline: 2px solid #c94f2c; outline-offset: 3px; }"
+    },
+    {
+      "name": "Dark Button",
+      "kind": "button",
+      "refersTo": "button-dark",
+      "description": "Ink-filled button used for secondary product actions (add to cart on cards, checkout).",
+      "html": "<button class=\"ds-btn-dark\">Add to cart</button>",
+      "css": ".ds-btn-dark { display: inline-block; background: #1a1714; color: #f7f4ef; font-family: 'DM Sans', system-ui, sans-serif; font-size: 12px; font-weight: 500; padding: 9px 20px; border: none; border-radius: 2px; cursor: pointer; transition: background 0.2s; } .ds-btn-dark:hover { background: #c94f2c; } .ds-btn-dark:focus-visible { outline: 2px solid #c94f2c; outline-offset: 3px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action on light backgrounds; stays transparent through hover.",
+      "html": "<button class=\"ds-btn-outline\">View details</button>",
+      "css": ".ds-btn-outline { display: inline-block; background: transparent; color: #524a41; font-family: 'DM Sans', system-ui, sans-serif; font-size: 12px; padding: 11px 24px; border: 1px solid rgba(26,23,20,0.1); border-radius: 2px; cursor: pointer; transition: all 0.2s; } .ds-btn-outline:hover { border-color: #524a41; color: #1a1714; } .ds-btn-outline:focus-visible { outline: 2px solid #c94f2c; outline-offset: 3px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Standard form field — hairline border, sharp 2px radius, terracotta focus.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-email\">Email</label><input class=\"ds-input\" id=\"ds-email\" type=\"email\" placeholder=\"you@example.com\"/></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; } .ds-field-label { font-family: 'DM Sans', system-ui, sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #524a41; } .ds-input { font-family: 'DM Sans', system-ui, sans-serif; font-size: 15px; color: #1a1714; background: #ffffff; border: 1px solid rgba(26,23,20,0.1); border-radius: 2px; padding: 12px 14px; outline: none; transition: border-color 0.15s; } .ds-input:focus { border-color: #c94f2c; }"
+    },
+    {
+      "name": "Primary Navigation",
+      "kind": "nav",
+      "refersTo": "nav-bar",
+      "description": "Fixed, blurred translucent nav bar with logo, links, cart pill, and dark CTA.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-logo\" href=\"#\">Polyplaces<sup>UK</sup></a><ul class=\"ds-nav-links\"><li><a href=\"#\">Shop</a></li><li><a href=\"#\">About</a></li></ul><div class=\"ds-nav-actions\"><button class=\"ds-nav-cart\">Cart <span>2</span></button><a class=\"ds-nav-cta\" href=\"#\">Start your piece</a></div></nav>",
+      "css": ".ds-nav { position: relative; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; background: rgba(247,244,239,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(26,23,20,0.1); } .ds-nav-logo { font-family: 'Fraunces', Georgia, serif; font-size: 18px; font-weight: 400; color: #1a1714; text-decoration: none; } .ds-nav-logo sup { font-size: 10px; font-family: 'DM Sans', system-ui, sans-serif; color: #c94f2c; vertical-align: super; letter-spacing: 0.05em; } .ds-nav-links { display: flex; gap: 20px; list-style: none; } .ds-nav-links a { font-family: 'DM Sans', system-ui, sans-serif; font-size: 13px; color: #524a41; text-decoration: none; transition: color 0.2s; } .ds-nav-links a:hover { color: #1a1714; } .ds-nav-actions { display: flex; align-items: center; gap: 12px; } .ds-nav-cart { background: transparent; border: 1px solid rgba(26,23,20,0.1); color: #1a1714; font-family: 'DM Sans', system-ui, sans-serif; font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: 999px; cursor: pointer; transition: all 0.2s; } .ds-nav-cart:hover { border-color: #524a41; box-shadow: 0 6px 18px rgba(26,23,20,0.18); } .ds-nav-cart span { color: #c94f2c; } .ds-nav-cta { background: #1a1714; color: #f7f4ef; padding: 8px 18px; font-family: 'DM Sans', system-ui, sans-serif; font-size: 12px; font-weight: 500; text-decoration: none; transition: background 0.2s; } .ds-nav-cta:hover { background: #c94f2c; color: #fff; }"
+    },
+    {
+      "name": "Size Tag Badge",
+      "kind": "chip",
+      "refersTo": "badge-pill",
+      "description": "Pill-shaped informational label, e.g. size/scale tag on product cards.",
+      "html": "<span class=\"ds-badge\">A4 Frame</span>",
+      "css": ".ds-badge { display: inline-block; font-family: 'DM Sans', system-ui, sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #c94f2c; background: #fdf0ec; border: 1px solid rgba(201,79,44,0.2); padding: 2px 6px; border-radius: 2px; }"
+    },
+    {
+      "name": "Product Card",
+      "kind": "card",
+      "refersTo": "product-card",
+      "description": "Flat-cornered grid card lifting on hover; serif title, terracotta size tag.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-img\"></div><div class=\"ds-card-body\"><span class=\"ds-card-tag\">Small · 20×20cm</span><h3 class=\"ds-card-title\">The Fell &amp; The Fold</h3><p class=\"ds-card-desc\">A hand-finished relief of your chosen valley, in warm oak-toned resin.</p><div class=\"ds-card-footer\"><span class=\"ds-card-price\">£129</span><button class=\"ds-btn-dark\">Add to cart</button></div></div></div>",
+      "css": ".ds-card { display: block; background: #ffffff; border: 1px solid rgba(26,23,20,0.1); overflow: hidden; transition: transform 0.25s, box-shadow 0.25s; } .ds-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(26,23,20,0.1); } .ds-card-img { aspect-ratio: 4/3; background: #efe9df; } .ds-card-body { padding: 20px; } .ds-card-tag { display: block; font-family: 'DM Sans', system-ui, sans-serif; font-size: 11px; font-weight: 500; color: #c94f2c; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; } .ds-card-title { font-family: 'Fraunces', Georgia, serif; font-size: 19px; font-weight: 400; color: #1a1714; margin: 0 0 6px; } .ds-card-desc { font-family: 'DM Sans', system-ui, sans-serif; font-size: 12px; color: #524a41; line-height: 1.6; margin: 0 0 16px; } .ds-card-footer { display: flex; align-items: center; justify-content: space-between; } .ds-card-price { font-family: 'Fraunces', Georgia, serif; font-size: 22px; font-weight: 400; color: #1a1714; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Field Notebook",
+    "overview": "Polyplaces reads like a hand-measured field record for a place that's about to become an object: warm paper grounds, ink-dark text, and a single terracotta marker-ink accent that flags the thing being surveyed — the price, the chosen location, the call to act. The system is considered and tactile rather than novelty-gift or startup-bright: it earns attention through restraint and typographic confidence, not saturation or motion.\n\nTwo typefaces carry the whole system's personality. Fraunces (light weight, often italic) supplies the editorial, hand-annotated voice on headlines, prices, and pull-quotes — the \"written in the field\" register. DM Sans carries everything functional: body copy, labels, buttons, form fields — the \"printed form\" register. The pairing itself is the brand: journal entry above, order form below.\n\nTerracotta is rare by design. It marks exactly one thing per view — a step number, a size tag, a hero pill, a call-to-action fill, a selected state — never used as decoration or fill for its own sake.",
+    "keyCharacteristics": [
+      "Warm cream/paper grounds (#f7f4ef, #efe9df) with near-black ink text (#1a1714), never pure gray",
+      "Fraunces light-weight serif (often italic) for editorial moments; DM Sans for everything functional",
+      "Terracotta (#c94f2c) as a single, deliberately rare marker color",
+      "Near-square action surfaces (2px radius) against fully round pill labels — the system's signature contrast",
+      "Flat at rest; shadow appears only as a response to interaction"
+    ],
+    "rules": [
+      { "name": "The One Marker Rule", "body": "Terracotta appears once per view, for the one thing that matters — a price, a selected state, or the primary action. It is never a background fill, a decorative border, or a repeated pattern.", "section": "colors" },
+      { "name": "The Roman/Italic Pairing Rule", "body": "A Fraunces headline that needs a softer second clause uses a dimmed italic em clause, rather than introducing a second color or weight.", "section": "typography" },
+      { "name": "The Flat-at-Rest Rule", "body": "Surfaces are flat by default; shadow exists exclusively as a response to state — hover lift, drawer slide, floating control dock, modal arrival.", "section": "elevation" },
+      { "name": "The Sharp Action, Round Label Rule", "body": "Interactive surfaces that do something (buttons, inputs, cards) stay near-square. Surfaces that label or float (badges, pills, drawer close buttons) go fully round. A component's radius tells you whether it's an action or a note.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do keep terracotta to one marker per view — a price, a selected state, or the primary action. Its rarity is what makes it read.",
+      "Do pair a Fraunces roman clause with a dimmed italic em clause for a two-register headline, rather than introducing a second color or weight.",
+      "Do keep buttons and inputs near-square (2px) and badges/pills fully round (999px) — the contrast is a deliberate rule, not an inconsistency to fix.",
+      "Do hold shadows to interaction-only: hover, open, float. A resting card or button stays flat.",
+      "Do use the ink-tinted shadow (rgba(26,23,20,...)) everywhere depth is needed — never a cool/neutral gray shadow."
+    ],
+    "donts": [
+      "Don't put a thick accent-colored border on one edge of a rounded card — a border-left/border-top accent stripe clashes with a soft corner radius. Pick one language, not both.",
+      "Don't animate padding/width/height for hover or state transitions; prefer transform.",
+      "Don't introduce a second saturated accent color. Every non-neutral color in the system traces back to Burnt Terracotta at some tint or shade.",
+      "Don't use pure gray or pure black anywhere — every neutral is warm-tinted off the ink/paper axis."
+    ]
+  }
+}

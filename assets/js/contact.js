@@ -65,8 +65,9 @@
         });
     })
     .then(function () {
-      if (typeof fbq === 'function') fbq('track', 'Lead', { content_name: 'Contact form' });
-      if (typeof window.ppTrackGA === 'function') window.ppTrackGA('contact_submitted', { subject: subject });
+      if (typeof window.ppTrack === 'function') {
+        window.ppTrack('contact_submitted', { subject: subject }, { metaEvent: 'Lead', metaParams: { content_name: 'Contact form' } });
+      }
       showStatus('success', 'Message sent — we’ll be in touch within 1–2 business days.');
       form.reset();
       if (typeof window.ppTurnstileReset === 'function') window.ppTurnstileReset(form);
