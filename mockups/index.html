@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Homepage mockups</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{--paper:#f7f4ef;--ink:#1a1714;--mid:#524a41;--taupe:#7a7166;--accent:#c94f2c;--line:rgba(26,23,20,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#e9e4dc;color:var(--ink);font:400 15px/1.5 "DM Sans",system-ui,sans-serif;padding:28px 24px 48px}
+header{display:flex;justify-content:space-between;align-items:end;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+h1{font:300 34px "Fraunces",serif}
+header p{color:var(--mid);max-width:70ch}
+.toggle{display:flex;border:1px solid var(--line);background:#fff;border-radius:2px}
+.toggle button{border:0;background:none;padding:9px 16px;font:inherit;cursor:pointer}
+.toggle button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.col h2{font:400 21px "Fraunces",serif;margin-bottom:4px}
+.col p{color:var(--mid);font-size:14px;min-height:64px;margin-bottom:10px}
+.col a{color:var(--accent);font-size:14px;font-weight:500}
+.frame{background:#fff;border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:12px;height:78vh;position:relative}
+.frame iframe{border:0;position:absolute;top:0;left:0;transform-origin:0 0}
+@media (max-width:900px){.cols{grid-template-columns:1fr}.frame{height:70vh}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Homepage directions</h1>
+    <p>Three ways to make the homepage sell. Each one is live - click, drag and scroll inside the frames, or open full size.</p>
+  </div>
+  <div class="toggle" role="group" aria-label="Viewport"><button aria-pressed="true" data-w="1440">Desktop</button><button aria-pressed="false" data-w="390">Mobile</button></div>
+</header>
+<div class="cols">
+  <div class="col">
+    <h2>A - Shop window</h2>
+    <p>Homepage acts like a product page: real photo, price, size and frame pickers, and one big "find my place" button above the fold.</p>
+    <a href="a-shop-window.html" target="_blank">Open full size &rarr;</a>
+    <div class="frame"><iframe src="a-shop-window.html" title="Mockup A"></iframe></div>
+  </div>
+  <div class="col">
+    <h2>B - The gift</h2>
+    <p>Sells the moment it's unwrapped. Christmas deadline, shopping by occasion, a review on the hero photo and a wall of places we've made.</p>
+    <a href="b-the-gift.html" target="_blank">Open full size &rarr;</a>
+    <div class="frame"><iframe src="b-the-gift.html" title="Mockup B"></iframe></div>
+  </div>
+  <div class="col">
+    <h2>C - Map first</h2>
+    <p>The hero is a live map with the sculpture frame on top. Drag, pick a size, and jump straight into the 3D preview with that area.</p>
+    <a href="c-map-first.html" target="_blank">Open full size &rarr;</a>
+    <div class="frame"><iframe src="c-map-first.html" title="Mockup C"></iframe></div>
+  </div>
+</div>
+<script>
+let vw=1440;
+function layout(){document.querySelectorAll('.frame').forEach(f=>{const i=f.querySelector('iframe');const s=f.clientWidth/vw;
+  i.style.width=vw+'px';i.style.height=f.clientHeight/s+'px';i.style.transform=`scale(${s})`;});}
+document.querySelectorAll('.toggle button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.toggle button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));vw=+b.dataset.w;layout();}));
+addEventListener('resize',layout);layout();
+</script>
+</body>
+</html>

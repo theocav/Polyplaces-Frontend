@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mockup B - The gift</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{--paper:#f7f4ef;--deep:#efe9df;--ink:#1a1714;--mid:#524a41;--taupe:#7a7166;--accent:#c94f2c;--accent2:#e8684a;--wash:#fdf0ec;--line:rgba(26,23,20,.12);--oak:#d8b589}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font:400 16px/1.55 "DM Sans",system-ui,sans-serif}
+a{color:inherit}
+img{display:block;max-width:100%}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+.deadline{display:flex;justify-content:center;gap:18px;align-items:center;background:var(--accent);color:#fff;padding:11px 16px;font-size:14px;flex-wrap:wrap;text-align:center}
+.deadline b{font-weight:500}
+.count{font-variant-numeric:tabular-nums;background:rgba(0,0,0,.18);padding:3px 9px;border-radius:2px}
+nav{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;max-width:1200px;margin:0 auto}
+.logo{font:400 22px "Fraunces",serif;text-decoration:none}
+nav a.btn{font-size:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--paper);text-decoration:none;padding:12px 20px;border-radius:2px;font-weight:500}
+.btn.accent{background:var(--accent);color:#fff;padding:17px 28px;font-size:17px}
+.btn.accent:hover{background:var(--accent2)}
+
+/* HERO: the unwrapping moment */
+.hero{max-width:1200px;margin:0 auto;padding:24px 24px 80px;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+h1{font:300 clamp(40px,5.4vw,74px)/1 "Fraunces",serif;letter-spacing:-.025em;margin-bottom:22px}
+h1 em{font-style:italic;color:var(--accent)}
+.lede{font-size:18px;color:var(--mid);max-width:44ch;margin-bottom:28px}
+.for{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:30px}
+.for a{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 15px;font-size:14px;text-decoration:none}
+.for a:hover{border-color:var(--ink)}
+.hero-proof{display:flex;align-items:center;gap:14px;margin-top:26px;font-size:14px;color:var(--mid)}
+.faces{display:flex}
+.faces span{width:34px;height:34px;border-radius:50%;border:2px solid var(--paper);margin-left:-8px;display:grid;place-items:center;font:500 12px "DM Sans";color:var(--ink)}
+.faces span:first-child{margin-left:0}
+.stars{color:var(--accent);letter-spacing:2px}
+.photo-stack{position:relative}
+.photo-stack .main{aspect-ratio:4/5;object-fit:cover;width:100%;border-radius:2px}
+.quote-card{position:absolute;left:-40px;bottom:36px;background:#fff;max-width:300px;padding:20px 22px;box-shadow:0 20px 40px -20px rgba(26,23,20,.4);border-radius:2px}
+.quote-card q{font:300 italic 19px/1.35 "Fraunces",serif;quotes:none;display:block;margin:6px 0 10px}
+.quote-card small{color:var(--taupe);font-size:13px}
+
+/* WALL OF PLACES - fed by GET /api/places */
+.wall{background:var(--ink);color:var(--paper);padding:88px 0}
+.head{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:36px;flex-wrap:wrap}
+.eyebrow{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:500;margin-bottom:10px}
+h2{font:300 clamp(30px,3.6vw,48px)/1.06 "Fraunces",serif;letter-spacing:-.02em;max-width:18ch}
+.wall .eyebrow{color:var(--oak)}
+.wall .head a{color:var(--oak);font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:220px;gap:14px}
+.tile{position:relative;overflow:hidden;border-radius:2px;background:#2a2521;text-decoration:none;color:#fff}
+.tile.big{grid-column:span 2;grid-row:span 2}
+.tile.tall{grid-row:span 2}
+.tile img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
+.tile:hover img{transform:scale(1.04)}
+.tile .cap{position:absolute;inset:auto 0 0 0;padding:40px 16px 14px;background:linear-gradient(transparent,rgba(26,23,20,.85))}
+.tile .cap b{display:block;font:400 20px "Fraunces",serif}
+.tile .cap span{font-size:13px;opacity:.8}
+.tile .go{position:absolute;top:12px;right:12px;background:var(--paper);color:var(--ink);font-size:12px;padding:6px 10px;border-radius:2px;opacity:0;transition:opacity .2s}
+.tile:hover .go,.tile:focus-visible .go{opacity:1}
+
+/* OCCASIONS */
+.occ{padding:88px 0}
+.occ-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:36px}
+.occ-card{background:#fff;border:1px solid var(--line);padding:26px 22px;border-radius:2px;display:flex;flex-direction:column;gap:10px;text-decoration:none;min-height:220px}
+.occ-card:hover{border-color:var(--ink)}
+.occ-card h3{font:400 23px "Fraunces",serif}
+.occ-card p{font-size:15px;color:var(--mid);flex:1}
+.occ-card span{font-size:14px;color:var(--accent);font-weight:500}
+
+/* PROMISE */
+.promise{background:var(--deep);padding:72px 0}
+.promise-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px}
+.promise h3{font:400 20px "Fraunces",serif;margin:10px 0 6px}
+.promise p{color:var(--mid);font-size:15px}
+.num{font:300 italic 40px "Fraunces",serif;color:var(--accent)}
+.end{padding:96px 0;text-align:center}
+.end h2{margin:0 auto 14px;max-width:22ch}
+.end p{color:var(--mid);margin-bottom:28px}
+.note{font-size:12px;color:var(--taupe);text-align:center;padding:24px;border-top:1px dashed var(--line)}
+
+@media (max-width:900px){
+  .wrap{padding:0 16px}
+  .hero{grid-template-columns:1fr;gap:28px;padding:8px 16px 56px}
+  .photo-stack{order:-1}
+  .quote-card{left:12px;right:12px;bottom:12px;max-width:none}
+  .grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:170px}
+  .tile.big{grid-column:span 2}
+  .occ-grid,.promise-grid{grid-template-columns:1fr}
+  .occ-card{min-height:0}
+}
+</style>
+</head>
+<body>
+<div class="deadline"><span><b>Christmas delivery:</b> order by [date]. Every piece is made to order.</span><span class="count" id="count">-- days left</span></div>
+<nav>
+  <a class="logo" href="#">Polyplaces</a>
+  <a class="btn" href="/store/">Make one &rarr;</a>
+</nav>
+
+<section class="hero">
+  <div>
+    <h1>The gift they'll <em>actually</em> keep.</h1>
+    <p class="lede">The street where you met. The hill you climbed together. The town they left behind. We sculpt it in 3D - real terrain, real buildings - and frame it.</p>
+    <div class="for" aria-label="Shop by occasion">
+      <a href="#">Anniversary</a><a href="#">New home</a><a href="#">Moving away</a><a href="#">Wedding</a><a href="#">In memory</a><a href="#">For Dad</a>
+    </div>
+    <a class="btn accent" href="/store/">Choose their place &rarr;</a>
+    <div class="hero-proof">
+      <div class="faces" aria-hidden="true"><span style="background:#e8d5c4">TH</span><span style="background:#d8b589">CB</span><span style="background:#f0c9b8">PS</span></div>
+      <div><span class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span> 4.9 average &middot; 35 pieces made so far</div>
+    </div>
+  </div>
+  <div class="photo-stack">
+    <img class="main" src="../assets/imgs/hero-desk-relief.webp" alt="White-framed 3D relief sculpture of a coastal town on a desk"/>
+    <div class="quote-card">
+      <span class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+      <q>She cried when she opened it. Genuinely one of the best gifts I've ever given.</q>
+      <small>Tom H., London - the street where he proposed</small>
+    </div>
+  </div>
+</section>
+
+<section class="wall">
+  <div class="wrap">
+    <div class="head">
+      <div><div class="eyebrow">Places we've made</div><h2>Every one of these meant something to someone.</h2></div>
+      <a href="#">See them all &rarr;</a>
+    </div>
+    <div class="grid">
+      <a class="tile big" href="#"><img src="../assets/imgs/hero-desk-relief.webp" alt="" style="object-position:50% 45%"/><div class="cap"><b>Whitby harbour</b><span>A4 &middot; white frame &middot; anniversary</span></div><span class="go">Make this place &rarr;</span></a>
+      <a class="tile tall" href="#"><img src="../assets/imgs/74c45980-8acc-4220-b7b1-4b813a2ba1a1.webp" alt=""/><div class="cap"><b>Primrose Hill</b><span>Small &middot; first flat</span></div><span class="go">Make this place &rarr;</span></a>
+      <a class="tile" href="#"><img src="../assets/imgs/A4%20frame.webp" alt=""/><div class="cap"><b>Wastwater</b><span>Large &middot; oak</span></div><span class="go">Make this place &rarr;</span></a>
+      <a class="tile" href="#"><img src="../assets/imgs/custom.webp" alt=""/><div class="cap"><b>Yr Wyddfa</b><span>Custom size</span></div><span class="go">Make this place &rarr;</span></a>
+    </div>
+  </div>
+</section>
+
+<section class="occ">
+  <div class="wrap">
+    <div class="eyebrow">Who it's for</div>
+    <h2>For the person who has everything except this.</h2>
+    <div class="occ-grid">
+      <a class="occ-card" href="#"><h3>Anniversaries</h3><p>Where you met, where you said yes, the first place you lived together.</p><span>Shop anniversary &rarr;</span></a>
+      <a class="occ-card" href="#"><h3>Moving away</h3><p>A piece of the old street to hang in the new place.</p><span>Shop leaving gifts &rarr;</span></a>
+      <a class="occ-card" href="#"><h3>Walkers &amp; climbers</h3><p>The summit, the ridge, the whole route, in true relief.</p><span>Shop mountains &rarr;</span></a>
+      <a class="occ-card" href="#"><h3>In memory</h3><p>A quiet way to keep a place, and a person, close.</p><span>Shop memorial &rarr;</span></a>
+    </div>
+  </div>
+</section>
+
+<section class="promise">
+  <div class="wrap promise-grid">
+    <div><div class="num">1</div><h3>See it before you buy</h3><p>A live 3D preview shows the exact area, buildings and frame you'll get.</p></div>
+    <div><div class="num">2</div><h3>We check it with you</h3><p>We email a proof and wait for your OK before we start printing.</p></div>
+    <div><div class="num">3</div><h3>Arrives ready to give</h3><p>Gift-boxed with a coordinate card. Ships in 1-2 weeks, UK only.</p></div>
+  </div>
+</section>
+
+<section class="end">
+  <h2>Which place would make them stop and stare?</h2>
+  <p>Small from &pound;30 &middot; A4 from &pound;35 &middot; Large from &pound;45 &middot; frames from &pound;10</p>
+  <a class="btn accent" href="/store/">Choose their place &rarr;</a>
+</section>
+<p class="note">Mockup B - gift and social-proof led. Wall tiles would come from the admin-managed places API. Place names, reviews and the "35 made" count are the site's current content; deadline date is a placeholder.</p>
+<script>
+// Placeholder deadline for the countdown chip.
+const d=new Date('2026-12-10T23:59:00');const n=Math.max(0,Math.ceil((d-new Date())/864e5));
+document.getElementById('count').textContent=n+' days left';
+</script>
+</body>
+</html>
