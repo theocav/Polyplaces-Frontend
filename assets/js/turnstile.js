@@ -10,6 +10,7 @@
  * API:
  *   window.ppTurnstileToken(formEl)  -> string ('' when unrendered or expired)
  *   window.ppTurnstileReset(formEl)  -> void, call after a submit
+ *   window.ppTurnstileRender(el)     -> void, render one container added after load
  *   window.ppTurnstileReady          -> bool, false until the widget renders
  */
 (function () {
@@ -53,20 +54,48 @@
     }
   };
 
-  function renderAll() {
-    if (!window.turnstile) return;
-    containers().forEach(function (el) {
-      if (el.getAttribute('data-turnstile-rendered') === '1') return;
-      var id = window.turnstile.render(el, {
-        sitekey: SITE_KEY,
-        theme: 'light',
-        action: el.getAttribute('data-turnstile') || 'submit'
-      });
-      el.setAttribute('data-turnstile-rendered', '1');
-      widgets.push({ el: el, id: id });
+  function renderOne(el) {
+    if (el.getAttribute('data-turnstile-rendered') === '1') return;
+    var id = window.turnstile.render(el, {
+      sitekey: SITE_KEY,
+      theme: 'light',
+      action: el.getAttribute('data-turnstile') || 'submit'
     });
+    el.setAttribute('data-turnstile-rendered', '1');
+    widgets.push({ el: el, id: id });
     window.ppTurnstileReady = widgets.length > 0;
   }
+
+  function renderAll() {
+    if (!window.turnstile) return;
+    containers().forEach(renderOne);
+  }
+
+  // api.js is loaded async, so it may land before or after any given caller.
+  function whenReady(fn) {
+    if (window.turnstile) return fn();
+    var tries = 0;
+    var poll = setInterval(function () {
+      if (window.turnstile) {
+        clearInterval(poll);
+        fn();
+      } else if (++tries > 100) { // ~10s
+        clearInterval(poll);
+        console.warn('[turnstile] api.js did not load.');
+      }
+    }, 100);
+  }
+
+  // For widgets whose markup does not exist at page load - the newsletter popup
+  // is built only when it opens, so it has to ask for its own render.
+  window.ppTurnstileRender = function (el) {
+    if (!el || el.getAttribute('data-turnstile-rendered') === '1') return;
+    if (!SITE_KEY) {
+      console.warn('[turnstile] POLYPLACES_TURNSTILE_SITE_KEY is not set - widget not rendered.');
+      return;
+    }
+    whenReady(function () { renderOne(el); });
+  };
 
   function init() {
     if (!containers().length) return;
@@ -79,21 +108,7 @@
       return;
     }
 
-    // api.js is loaded async, so it may land before or after this file.
-    if (window.turnstile) {
-      renderAll();
-    } else {
-      var tries = 0;
-      var poll = setInterval(function () {
-        if (window.turnstile) {
-          clearInterval(poll);
-          renderAll();
-        } else if (++tries > 100) { // ~10s
-          clearInterval(poll);
-          console.warn('[turnstile] api.js did not load.');
-        }
-      }, 100);
-    }
+    whenReady(renderAll);
   }
 
   if (document.readyState === 'loading') {
