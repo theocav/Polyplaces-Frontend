@@ -60,8 +60,9 @@
         });
     })
     .then(function () {
-      if (typeof fbq === 'function') fbq('track', 'Lead', { content_name: 'Newsletter signup' });
-      if (typeof window.ppTrackGA === 'function') window.ppTrackGA('newsletter_signup');
+      if (typeof window.ppTrack === 'function') {
+        window.ppTrack('newsletter_signup', { source: 'page' }, { metaEvent: 'Lead', metaParams: { content_name: 'Newsletter signup' } });
+      }
       showStatus('success', 'Check your inbox for your 10% discount code. It should arrive within a few minutes.');
       form.reset();
       if (typeof window.ppTurnstileReset === 'function') window.ppTurnstileReset(form);

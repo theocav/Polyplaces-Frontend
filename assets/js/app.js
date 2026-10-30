@@ -238,6 +238,115 @@ function createFocusTrap(container, onClose) {
   return () => document.removeEventListener('keydown', handler);
 }
 
+// ── Analytics ──────────────────────────────────────────────────────────────────
+// Events go through ppTrack in analytics.js, which handles consent and sends to
+// GA4 and Meta. analytics.js loads after this file, so calls made before it
+// runs (the purchase on the Stripe return, say) wait in __ppPending.
+function track(name, params, opts) {
+  if (typeof window.ppTrack === 'function') return window.ppTrack(name, params, opts);
+  (window.__ppPending = window.__ppPending || []).push([name, params, opts]);
+  return null;
+}
+
+// Engaged-time stopwatch: counts only while the tab is visible, so a preview
+// left open in a background tab doesn't read as minutes of interest.
+function engagedTimer() {
+  let total = 0;
+  let since = document.visibilityState === 'visible' ? Date.now() : null;
+  const onVis = () => {
+    if (document.visibilityState === 'visible') {
+      if (since == null) since = Date.now();
+    } else if (since != null) {
+      total += Date.now() - since;
+      since = null;
+    }
+  };
+  document.addEventListener('visibilitychange', onVis);
+  const ms = () => total + (since != null ? Date.now() - since : 0);
+  return {
+    ms,
+    stop() {
+      total = ms();
+      since = null;
+      document.removeEventListener('visibilitychange', onVis);
+      return total;
+    },
+  };
+}
+
+function gaItems(items) {
+  return items.map((i) => ({
+    item_id: i.priceId,
+    item_name: i.name,
+    item_variant: i.frame ? (i.frameName || 'framed') : 'unframed',
+    item_category: i.landscape ? 'landscape' : 'buildings',
+    price: Number(i.price) || 0,
+    quantity: 1,
+  }));
+}
+
+function cartValue(items) {
+  return items.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
+}
+
+// Country and region from the reverse-geocode label ("NatWest, Greater
+// London, United Kingdom"). Deliberately coarse: a framed area is often
+// someone's home, so no street-level detail goes to analytics.
+function placeFromLabel(label) {
+  const parts = String(label || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (!parts.length || label === 'Location unavailable') return {};
+  return {
+    country: parts[parts.length - 1],
+    region: parts.length >= 3 ? parts[parts.length - 2] : undefined,
+  };
+}
+
+const round1 = (v) => (Number.isFinite(v) ? Math.round(v * 10) / 10 : undefined);
+
+// One summary per framing session instead of an event per drag: how long the
+// visitor spent placing the frame and how much they adjusted it before adding
+// to cart or leaving.
+let selectionStats = null;
+
+function selectionStat(key) {
+  if (!selectionStats) {
+    selectionStats = {
+      timer: engagedTimer(),
+      drags: 0, map_pans: 0, map_zooms: 0, frame_zooms: 0, rotations: 0,
+      landscape_toggles: 0, searches: 0, size_changes: 0, previewed: false,
+    };
+  }
+  if (key) selectionStats[key] += 1;
+}
+
+function sendSelectionSummary(outcome, place = {}) {
+  if (!selectionStats) return;
+  const s = selectionStats;
+  selectionStats = null;
+  const c = selectionMeta?.center || frameCenter;
+  track('selection_summary', {
+    outcome,
+    engaged_ms: s.timer.stop(),
+    drags: s.drags,
+    map_pans: s.map_pans,
+    map_zooms: s.map_zooms,
+    frame_zooms: s.frame_zooms,
+    rotations: s.rotations,
+    landscape_toggles: s.landscape_toggles,
+    searches: s.searches,
+    size_changes: s.size_changes,
+    previewed: s.previewed,
+    size: selectedProduct?.name,
+    landscape: !!landscapeMode,
+    lat_1dp: round1(c?.lat),
+    lng_1dp: round1(c?.lng),
+    country: place.country,
+    region: place.region,
+  });
+}
+
+window.addEventListener('pagehide', () => sendSelectionSummary('left'));
+
 function showCheckoutBanner() {
   const banner = document.getElementById('checkout-banner');
   const textEl = document.getElementById('checkout-banner-text');
@@ -261,41 +370,38 @@ function showCheckoutBanner() {
   textEl.textContent = message;
 
   if (status === 'success' && (params.get('session_id') || !REQUIRE_SESSION_ID)) {
-    // Fire the Meta Purchase event once per Stripe session before the cart is cleared.
-    if (typeof fbq === 'function') {
-      const sessionId = params.get('session_id') || '';
-      let alreadyTracked = false;
-      try {
-        alreadyTracked = sessionId && localStorage.getItem('_fbq_purchased') === sessionId;
-      } catch (_) {}
-      if (!alreadyTracked) {
-        const orderValue = cart.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
-        fbq('track', 'Purchase', {
+    // Browser-side purchase, once per Stripe session, before the cart is cleared.
+    // The Stripe webhook reports the same purchase server-side with the real
+    // charged amount; transaction_id (GA4) and the 'purchase_<session>' event
+    // id (Meta) let each platform drop the duplicate.
+    const sessionId = params.get('session_id') || '';
+    let alreadyTracked = false;
+    try {
+      alreadyTracked = sessionId && localStorage.getItem('_fbq_purchased') === sessionId;
+    } catch (_) {}
+    if (!alreadyTracked && cart.length) {
+      const orderValue = cartValue(cart);
+      track('purchase', {
+        transaction_id: sessionId || undefined,
+        value: orderValue,
+        currency: 'GBP',
+        items: gaItems(cart),
+      }, {
+        eventId: sessionId ? `purchase_${sessionId}` : undefined,
+        metaParams: {
           content_ids: cart.map((i) => i.priceId),
           content_type: 'product',
           num_items: cart.length,
           value: orderValue,
           currency: 'GBP',
-        });
-        // GA4 purchase — transaction_id (Stripe session) dedups on page refresh.
-        if (typeof window.ppTrackGA === 'function') {
-          window.ppTrackGA('purchase', {
-            transaction_id: sessionId || undefined,
-            value: orderValue,
-            currency: 'GBP',
-            items: cart.map((i) => ({
-              item_id: i.priceId,
-              item_name: i.name,
-              price: Number(i.price) || 0,
-              quantity: 1,
-            })),
-          });
-        }
-        try { if (sessionId) localStorage.setItem('_fbq_purchased', sessionId); } catch (_) {}
-      }
+        },
+      });
+      try { if (sessionId) localStorage.setItem('_fbq_purchased', sessionId); } catch (_) {}
     }
     // Stripe returned successfully; clear the cart so users don't accidentally repurchase.
     clearCart();
+  } else if (status === 'fail' || status === 'abort') {
+    track('checkout_returned', { status, value: cartValue(cart), num_items: cart.length });
   }
 
   closeBtn.onclick = () => {
@@ -458,21 +564,22 @@ function renderSizeOptions() {
 function selectProduct(product) {
   if (!product) return;
   const isNewProduct = !selectedProduct || selectedProduct.id !== product.id;
-  if (isNewProduct && typeof fbq === 'function') {
-    fbq('track', 'ViewContent', {
-      content_ids: [product.priceId],
-      content_name: product.name,
-      content_type: 'product',
-      value: Number.isFinite(Number(product.unitAmount)) ? Number(product.unitAmount) / 100 : 0,
-      currency: 'GBP',
-    });
-  }
-  if (isNewProduct && typeof window.ppTrackGA === 'function') {
+  if (isNewProduct) {
+    if (selectionStats && selectedProduct) selectionStat('size_changes');
+    else selectionStat();
     const viewValue = Number.isFinite(Number(product.unitAmount)) ? Number(product.unitAmount) / 100 : 0;
-    window.ppTrackGA('view_item', {
+    track('view_item', {
       value: viewValue,
       currency: 'GBP',
       items: [{ item_id: product.priceId, item_name: product.name, price: viewValue, quantity: 1 }],
+    }, {
+      metaParams: {
+        content_ids: [product.priceId],
+        content_name: product.name,
+        content_type: 'product',
+        value: viewValue,
+        currency: 'GBP',
+      },
     });
   }
   const prevBBox = bbox ? { ...bbox } : null;
@@ -583,6 +690,12 @@ function handleFrameChange(product, frameValue, isEnabled) {
   if (frameVal) {
     frameVal.textContent = frame ? `${frame.colourName}` : 'No frame';
   }
+  // The preview's frame picker lands here too, via selectStoreFrame.
+  track('select_frame', {
+    frame: frame?.colourName || 'none',
+    size: product.name,
+    source: document.querySelector('.pv-overlay') ? 'preview' : 'store',
+  });
 }
 
 function _applyFramePrices(rawFramePrices) {
@@ -705,6 +818,11 @@ function setupMapSearch() {
     const lat = Number(item?.lat);
     const lon = Number(item?.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    track('map_search_pick', {
+      position: Math.max(0, activeResults.indexOf(item)),
+      place_type: item.addresstype || item.type,
+      country: item.address?.country,
+    });
     map.setView([lat, lon], Math.max(map.getZoom(), 14), { animate: false });
 
     // After search, always center the frame on the new viewport center (if a product is selected).
@@ -798,6 +916,9 @@ function setupMapSearch() {
       if (!res.ok) throw new Error('Search failed');
       const data = await res.json();
       const results = Array.isArray(data) ? data : [];
+      // The query itself stays out: people search their own address.
+      selectionStat('searches');
+      track('map_search', { result_count: results.length, auto_selected: autoSelectTop }, { metaParams: {} });
       if (autoSelectTop && results.length > 0) {
         applyResult(results[0]);
         return;
@@ -993,8 +1114,10 @@ function initMap() {
 
   // No map click handler: frame placement is driven by the scale selector only (see selectProduct).
 
+  map.on('dragend', () => { if (selectionStats) selectionStat('map_pans'); });
   map.on('zoomend', () => {
     if (!bbox) return;
+    if (selectionStats) selectionStat('map_zooms');
     if (map.getZoom() < frameMinMapZoom()) {
       clearFrame();
       document.getElementById('map-hint').textContent =
@@ -1366,6 +1489,7 @@ function redrawFrame() {
       moveFromHandle(e.target.getLatLng(), false);
     });
     handle.on('dragend', (e) => {
+      selectionStat('drags');
       moveFromHandle(e.target.getLatLng(), true);
     });
   }
@@ -1535,7 +1659,10 @@ function renderCart() {
   cartItemsEl.querySelectorAll('.cart-item-remove').forEach((btn) => {
     btn.onclick = () => {
       const index = Number(btn.dataset.index);
-      cart.splice(index, 1);
+      const removed = cart.splice(index, 1);
+      if (removed.length) {
+        track('remove_from_cart', { value: cartValue(removed), currency: 'GBP', items: gaItems(removed) });
+      }
       saveCart();
       renderCart();
     };
@@ -1592,22 +1719,25 @@ function addSelectionToCart() {
     }),
   };
   cart.push(item);
-  if (typeof fbq === 'function') {
-    fbq('track', 'AddToCart', {
+  const place = placeFromLabel(item.location);
+  sendSelectionSummary('added_to_cart', place);
+  track('add_to_cart', {
+    value: Number(item.price) || 0,
+    currency: 'GBP',
+    items: gaItems([item]),
+    framed: hasFrame,
+    landscape: item.landscape,
+    country: place.country,
+    region: place.region,
+  }, {
+    metaParams: {
       content_ids: [item.priceId],
       content_name: item.name,
       content_type: 'product',
       value: Number(item.price) || 0,
       currency: 'GBP',
-    });
-  }
-  if (typeof window.ppTrackGA === 'function') {
-    window.ppTrackGA('add_to_cart', {
-      value: Number(item.price) || 0,
-      currency: 'GBP',
-      items: [{ item_id: item.priceId, item_name: item.name, price: Number(item.price) || 0, quantity: 1 }],
-    });
-  }
+    },
+  });
   saveCart();
   renderCart();
   const labelInput = document.getElementById('custom-location-label');
@@ -1624,6 +1754,7 @@ function openCart() {
 
   lastCartFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   document.body.classList.add('cart-open');
+  track('view_cart', { value: cartValue(cart), currency: 'GBP', items: gaItems(cart) });
   drawer.setAttribute('aria-hidden', 'false');
   overlay?.setAttribute('aria-hidden', 'false');
   toggle?.setAttribute('aria-expanded', 'true');
@@ -1686,30 +1817,26 @@ async function checkoutCart() {
   const checkoutBtn = document.getElementById('cart-checkout');
   checkoutBtn.disabled = true;
   checkoutBtn.textContent = 'Redirecting...';
-  if (typeof fbq === 'function') {
-    const coValue = cart.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
-    fbq('track', 'InitiateCheckout', {
+  const coValue = cartValue(cart);
+  track('begin_checkout', {
+    value: coValue,
+    currency: 'GBP',
+    items: gaItems(cart),
+  }, {
+    metaParams: {
       content_ids: cart.map((i) => i.priceId),
       content_type: 'product',
       num_items: cart.length,
       value: coValue,
       currency: 'GBP',
-    });
-  }
-  if (typeof window.ppTrackGA === 'function') {
-    const coValueGA = cart.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
-    window.ppTrackGA('begin_checkout', {
-      value: coValueGA,
-      currency: 'GBP',
-      items: cart.map((i) => ({
-        item_id: i.priceId,
-        item_name: i.name,
-        price: Number(i.price) || 0,
-        quantity: 1,
-      })),
-    });
-  }
+    },
+  });
   try {
+    // GA client/session ids and Meta browser ids, stored on the Stripe session
+    // so the webhook can attribute the purchase. Null without consent.
+    const attribution = typeof window.ppAttribution === 'function'
+      ? await window.ppAttribution().catch(() => null)
+      : null;
     const res = await fetch(`${apiBase}/api/checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1742,12 +1869,14 @@ async function checkoutCart() {
               : {}),
           };
         }),
+        ...(attribution ? { attribution } : {}),
       }),
     });
     const data = await res.json();
     if (!res.ok || !data.url) throw new Error(data.error || 'Checkout failed');
     window.location.href = data.url;
   } catch (err) {
+    track('checkout_error', { message: String(err?.message || 'unknown').slice(0, 100), value: coValue });
     try { localStorage.removeItem(_STORE_CACHE_KEY); localStorage.removeItem(_PRODUCTS_CACHE_KEY); } catch {}
     showBanner(err.message || 'Unable to start checkout. Please try again.', 'fail');
   } finally {
@@ -2009,6 +2138,7 @@ function initFrameControls() {
       const isRotated = rotBtn.getAttribute('aria-pressed') === 'true';
       frameRotation = isRotated ? 0 : 90;
       rotBtn.setAttribute('aria-pressed', isRotated ? 'false' : 'true');
+      selectionStat('rotations');
       if (frameCenter && selectedProduct) {
         resetReviewState();
         redrawFrame();
@@ -2026,12 +2156,15 @@ function initFrameControls() {
         updateLocationDisplay();
       }
     });
+    // One count per slider gesture, not per pixel of travel.
+    zoomSlider.addEventListener('change', () => selectionStat('frame_zooms'));
   }
 
   const landscapeBtn = document.getElementById('landscape-toggle-btn');
   if (landscapeBtn) {
     landscapeBtn.addEventListener('click', () => {
       landscapeMode = !landscapeMode;
+      selectionStat('landscape_toggles');
       // Each mode starts from its own default rather than a clamped leftover.
       frameZoom = zoomRange().initial;
       applyLandscapeUI();
@@ -2108,13 +2241,11 @@ if (document.getElementById('landing')) {
     localStorage.setItem('pp_cn', val);
     overlay.remove();
     document.body.style.overflow = '';
-    // The newsletter popup waits on this so the two never stack.
+    // The newsletter popup waits on this so the two never stack, and
+    // analytics.js loads GA4 and the Meta Pixel on it after an accept.
     document.dispatchEvent(new CustomEvent('pp:consent'));
   };
-  document.getElementById('cookie-accept').onclick = () => {
-    dismiss('1');
-    if (typeof window.ppLoadGA === 'function') window.ppLoadGA();
-  };
+  document.getElementById('cookie-accept').onclick = () => dismiss('1');
   document.getElementById('cookie-reject').onclick = () => dismiss('0');
 }());
 
@@ -2221,7 +2352,7 @@ if (document.getElementById('landing')) {
       window.ppTurnstileRender(overlay.querySelector('[data-turnstile]'));
     }
 
-    if (typeof window.ppTrackGA === 'function') window.ppTrackGA('newsletter_shown');
+    track('newsletter_shown');
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -2261,8 +2392,7 @@ if (document.getElementById('landing')) {
         : new Promise((resolve) => setTimeout(resolve, 500)); // MOCK
 
       request.then(() => {
-        if (typeof window.ppTrackGA === 'function') window.ppTrackGA('newsletter_signup');
-        if (typeof fbq === 'function') fbq('track', 'Lead', { content_name: 'Newsletter' });
+        track('newsletter_signup', { source: 'popup' }, { metaEvent: 'Lead', metaParams: { content_name: 'Newsletter' } });
         writeState('subscribed');
         overlay.querySelector('.nl-body').innerHTML =
           '<p class="nl-eyebrow">You&rsquo;re in</p>' +
@@ -2464,6 +2594,7 @@ function offerPreview() {
   // Frames past what the browser preview can build go straight to the cart.
   const maxDeg = selectionMeta.landscape ? PREVIEW_MAX_DEG_LANDSCAPE : PREVIEW_MAX_DEG;
   if (box[2] - box[0] > maxDeg || box[3] - box[1] > maxDeg) {
+    track('preview_unavailable', { reason: 'too_large', landscape: !!selectionMeta.landscape });
     reviewSelection();
     return;
   }
@@ -2474,6 +2605,10 @@ function openPreviewDialog(box, landscape) {
   const lastFocused = document.activeElement;
   let preview = null;
   let releaseTrap = null;
+  // Engagement for the preview_close event: time spent looking at the 3D
+  // model (from when it is ready), and what the visitor did with it.
+  const pv = { shown: false, ready: false, timer: null, startedAt: 0, views: 0, frames: 0 };
+  track('preview_offered', { landscape: !!landscape });
 
   const overlay = document.createElement('div');
   overlay.className = 'pv-overlay';
@@ -2499,8 +2634,23 @@ function openPreviewDialog(box, landscape) {
   document.body.style.overflow = 'hidden';
   const card = overlay.querySelector('.pv-card');
 
-  function close() {
+  // outcome: 'add' | 'back' | 'dismiss' (×, Escape or backdrop).
+  function close(outcome = 'dismiss') {
     if (!overlay.isConnected) return;
+    if (!pv.shown) {
+      track('preview_declined', { outcome: outcome === 'add' ? 'add_without_preview' : 'dismiss' });
+    } else {
+      track('preview_close', {
+        outcome,
+        loaded: pv.ready,
+        engaged_ms: pv.timer ? pv.timer.stop() : 0,
+        wait_ms: pv.ready ? undefined : Math.round(performance.now() - pv.startedAt),
+        view: preview?.view,
+        view_changes: pv.views,
+        frame_changes: pv.frames,
+        frame: (previewFrameChoices(selectedProduct).find((f) => f.priceId === selectedFrame) || {}).colourName || 'none',
+      });
+    }
     preview?.dispose();
     releaseTrap?.();
     overlay.remove();
@@ -2509,12 +2659,12 @@ function openPreviewDialog(box, landscape) {
   }
 
   function addToCart() {
-    close();
+    close('add');
     reviewSelection();
   }
 
-  releaseTrap = createFocusTrap(card, close);
-  overlay.querySelector('.pv-close').onclick = close;
+  releaseTrap = createFocusTrap(card, () => close());
+  overlay.querySelector('.pv-close').onclick = () => close();
   overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(); });
   overlay.querySelector('[data-pv="skip"]').onclick = addToCart;
   overlay.querySelector('[data-pv="show"]').onclick = () => showPreview();
@@ -2545,7 +2695,7 @@ function openPreviewDialog(box, landscape) {
         '<button type="button" class="nl-decline" data-pv="back">Back to the map</button>' +
         '<button type="button" class="nl-submit" data-pv="add">Add to cart &rarr;</button>' +
       '</div>';
-    card.querySelector('[data-pv="back"]').onclick = close;
+    card.querySelector('[data-pv="back"]').onclick = () => close('back');
     card.querySelector('[data-pv="add"]').onclick = addToCart;
     card.focus();
 
@@ -2557,7 +2707,10 @@ function openPreviewDialog(box, landscape) {
       label.textContent = text;
     };
 
-    if (typeof window.ppTrackGA === 'function') window.ppTrackGA('preview_open');
+    pv.shown = true;
+    pv.startedAt = performance.now();
+    if (selectionStats) selectionStats.previewed = true;
+    track('preview_open', { landscape: !!landscape });
 
     const product = selectedProduct;
     const choices = previewFrameChoices(product);
@@ -2603,9 +2756,8 @@ function openPreviewDialog(box, landscape) {
           mark(colour);
           selectStoreFrame(product, frame?.priceId || null);
           showPrice();
-          if (frame && startedBare && typeof window.ppTrackGA === 'function') {
-            window.ppTrackGA('preview_frame_upsell', { colour: frame.colourName });
-          }
+          pv.frames += 1;
+          if (frame && startedBare) track('preview_frame_upsell', { colour: frame.colourName });
           bar.classList.add('pv-frames--busy');
           await preview?.setFrame(colour);
           bar.classList.remove('pv-frames--busy');
@@ -2633,6 +2785,13 @@ function openPreviewDialog(box, landscape) {
         },
         onReady(info) {
           loading.hidden = true;
+          pv.ready = true;
+          pv.timer = engagedTimer();
+          track('preview_ready', {
+            load_ms: Math.round(performance.now() - pv.startedAt),
+            has_room: !!info?.views?.includes('room'),
+            landscape: !!landscape,
+          });
           // The view switch and frame picker only matter with the room.
           const views = card.querySelector('#pv-views');
           if (!info?.views?.includes('room')) return;
@@ -2640,6 +2799,10 @@ function openPreviewDialog(box, landscape) {
           views.hidden = false;
           views.querySelectorAll('[data-view]').forEach((btn) => {
             btn.onclick = () => {
+              if (btn.dataset.view !== preview.view) {
+                pv.views += 1;
+                track('preview_view_change', { view: btn.dataset.view });
+              }
               preview.setView(btn.dataset.view);
               views.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
             };
@@ -2653,10 +2816,12 @@ function openPreviewDialog(box, landscape) {
             timeout: 'The preview is taking too long - please try again later.',
             oom: 'This area is too detailed to preview on this device.',
           };
+          track('preview_error', { code: String(code), wait_ms: Math.round(performance.now() - pv.startedAt) });
           showError(messages[code] || 'The preview couldn’t be built just now.');
         },
       });
     }).catch(() => {
+      track('preview_error', { code: 'module_load', wait_ms: Math.round(performance.now() - pv.startedAt) });
       if (overlay.isConnected) showError('The preview couldn’t be loaded just now.');
     });
   }
