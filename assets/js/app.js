@@ -1918,6 +1918,28 @@ async function loadHomepagePrices() {
 // Homepage gallery - one featured piece with a thumbnail strip. Each thumb
 // carries the place it shows, so "Make this place yours" opens the store map
 // on that location at the size the piece was made in.
+//
+// The pieces are managed in the admin app and served by GET /api/places. The
+// thumbs in index.html are the fallback: they stay unless the API returns at
+// least one published place, so the section is never empty. API text is
+// written with textContent only.
+const GALLERY_SIZE_LABELS = {
+  small: 'Small · 20 × 20cm',
+  a4: 'A4 · 20 × 28cm',
+  large: 'Large · 32 × 32cm',
+};
+const GALLERY_FRAME_LABELS = { oak: 'Oak frame', black: 'Black frame', white: 'White frame' };
+
+function galleryEyebrow(p) {
+  let size = GALLERY_SIZE_LABELS[p.size];
+  if (!size) {
+    size = p.widthCm && p.heightCm
+      ? `Custom · ${p.widthCm} × ${p.heightCm}cm`
+      : 'Custom · any size';
+  }
+  return GALLERY_FRAME_LABELS[p.frame] ? `${size} · ${GALLERY_FRAME_LABELS[p.frame]}` : size;
+}
+
 function initGallery() {
   const gallery = document.getElementById('gallery');
   if (!gallery) return;
@@ -1927,15 +1949,17 @@ function initGallery() {
   const note    = document.getElementById('gallery-note');
   const eyebrow = document.getElementById('gallery-eyebrow');
   const cta     = document.getElementById('gallery-cta');
-  const thumbs  = Array.from(gallery.querySelectorAll('.gallery-thumb'));
+  const strip   = gallery.querySelector('.gallery-thumbs');
+  let thumbs  = Array.from(strip.querySelectorAll('.gallery-thumb'));
 
   const show = (thumb) => {
     const d = thumb.dataset;
     photo.src = d.photo;
     photo.alt = d.alt;
+    if (d.w && d.h) { photo.width = Number(d.w); photo.height = Number(d.h); }
     place.textContent   = d.place;
-    note.innerHTML      = d.note;
-    eyebrow.innerHTML   = d.eyebrow;
+    note.textContent    = d.note;
+    eyebrow.textContent = d.eyebrow;
     cta.href = `/store/?scale=${encodeURIComponent(d.scale)}&lat=${encodeURIComponent(d.lat)}&lng=${encodeURIComponent(d.lng)}&z=${encodeURIComponent(d.z)}`;
     cta.setAttribute('aria-label', `Make ${d.place} yours`);
     thumbs.forEach((t) => {
@@ -1944,17 +1968,65 @@ function initGallery() {
     });
   };
 
-  thumbs.forEach((thumb, i) => {
-    thumb.addEventListener('click', () => show(thumb));
-    // Left/right arrows move along the strip, as a tablist should.
-    thumb.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-      e.preventDefault();
-      const next = thumbs[(i + (e.key === 'ArrowRight' ? 1 : thumbs.length - 1)) % thumbs.length];
-      next.focus();
-      show(next);
-    });
+  strip.addEventListener('click', (e) => {
+    const thumb = e.target.closest('.gallery-thumb');
+    if (thumb) show(thumb);
   });
+  // Left/right arrows move along the strip, as a tablist should.
+  strip.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const i = thumbs.indexOf(e.target.closest('.gallery-thumb'));
+    if (i < 0) return;
+    e.preventDefault();
+    const next = thumbs[(i + (e.key === 'ArrowRight' ? 1 : thumbs.length - 1)) % thumbs.length];
+    next.focus();
+    show(next);
+  });
+
+  loadGalleryPlaces().then((places) => {
+    if (!places.length) return;
+    thumbs = places.map((p) => {
+      const thumb = document.createElement('button');
+      thumb.type = 'button';
+      thumb.className = 'gallery-thumb';
+      thumb.setAttribute('role', 'tab');
+      Object.assign(thumb.dataset, {
+        place: p.name,
+        eyebrow: galleryEyebrow(p),
+        note: p.description || '',
+        photo: p.image.url,
+        alt: p.image.alt || p.name,
+        w: p.image.width || '',
+        h: p.image.height || '',
+        scale: p.size,
+        lat: p.lat,
+        lng: p.lng,
+        z: p.zoom,
+      });
+      const img = document.createElement('img');
+      img.src = p.image.url;
+      img.alt = '';
+      img.loading = 'lazy';
+      thumb.appendChild(img);
+      return thumb;
+    });
+    strip.replaceChildren(...thumbs);
+    show(thumbs[0]);
+  });
+}
+
+async function loadGalleryPlaces() {
+  try {
+    const res = await fetch(`${_CONFIG_API_BASE}/api/places`, { credentials: 'omit' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (Array.isArray(data.places) ? data.places : []).filter((p) =>
+      p && p.name && p.image && p.image.url && Number.isFinite(p.lat) && Number.isFinite(p.lng)
+    );
+  } catch (err) {
+    console.error('[Polyplaces] Failed to load gallery places:', err);
+    return [];
+  }
 }
 
 function initNavUI() {

@@ -174,9 +174,9 @@
       <div class="prod-header-right">Somewhere else in mind? <a href="/store/">Design yours</a></div>
     </div>
 
-    <!-- PLACEHOLDER CONTENT: photos are the existing product shots and the place
-         names below are stand-ins. Swap each thumb's data-* attributes and image
-         for a real finished piece - data-lat/lng/z set where the store map opens. -->
+    <!-- Fallback pieces. app.js replaces the thumbs with the places managed in
+         the admin app (GET /api/places) once at least one is published, so
+         this markup only shows if the API is down or has none yet. -->
     <div class="gallery reveal" id="gallery">
       <div class="gallery-feature">
         <div class="gallery-stage">
@@ -337,7 +337,7 @@
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script defer src="./assets/js/env.js?v=053c49e3"></script>
-<script defer src="./assets/js/app.js?v=468eb8ae"></script>
+<script defer src="./assets/js/app.js?v=8a92b2c8"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script defer src="./assets/js/turnstile.js?v=0d6c1fe7"></script>
 <script defer src="/assets/js/analytics.js?v=f88c509f"></script>
