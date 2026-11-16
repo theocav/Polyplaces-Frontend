@@ -57,6 +57,7 @@ async function run(bbox, overrides) {
   const transfer = [];
   for (const layer of Object.values(mesh.layers)) {
     transfer.push(layer.positions.buffer);
+    if (layer.lines) transfer.push(layer.lines.buffer);
     if (layer.colors) transfer.push(layer.colors.buffer);
   }
   post({

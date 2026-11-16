@@ -6,6 +6,7 @@ import earcut from 'earcut';
 import pc from 'polygon-clipping';
 import { flattenPolygon, multiBounds } from './geo.js';
 import { terrainMmPerM } from './config.js';
+import { printLayers } from './layers.js';
 
 const BORDER_EPS = 1e-6;
 
@@ -378,13 +379,18 @@ export function buildMeshes({ grid, water, footprints, sampleZ, frame, profile, 
 
   const out = {};
   for (const [name, soup] of Object.entries(layers)) {
-    const pos = new Float32Array(soup.p.length);
+    let pos = new Float32Array(soup.p.length);
     for (let k = 0; k < soup.p.length; k += 3) {
       pos[k] = soup.p[k] * xy;
       pos[k + 1] = soup.p[k + 1] * xy;
       pos[k + 2] = soup.p[k + 2] * zs;
     }
-    out[name] = { positions: pos, colors: soup.c ? new Float32Array(soup.c) : null };
+    let lines = null;
+    if (profile.printLayerMm) {
+      ({ positions: pos, lines } = printLayers(pos, { bedZ: zmin * zs, firstMm: profile.printFirstLayerMm, layerMm: profile.printLayerMm }));
+    }
+    // Stepping re-cuts the triangles, so per-vertex colours no longer line up.
+    out[name] = { positions: pos, lines, colors: soup.c && !profile.printLayerMm ? new Float32Array(soup.c) : null };
   }
   const bounds = multiBounds([[[[frame.rect.xmin, frame.rect.ymin], [frame.rect.xmax, frame.rect.ymax]]]]);
   return {

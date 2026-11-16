@@ -61,12 +61,12 @@ export const PROFILE = {
   // (where a 100 m base plate, ~19 mm, dwarfed ~6 mm of terrain, and wide
   // frames came out metres across so any relief vanished). Every preview is
   // scaled so its longer side is previewSpanMm; terrain relief is stretched
-  // to half the old base thickness and the base cut to a tenth of it. Water
+  // to 15 mm and the base cut to a tenth of the old base thickness. Water
   // pockets keep their 1.5 terrain-metre depth, so they halve with it. Buildings
   // keep the old stack's height-to-width ratio (25/130 mm per m against
   // 0.25 mm/m), scaled with the footprint.
   previewSpanMm: 150,
-  terrainReliefMm: 9.6,
+  terrainReliefMm: 15,
   baseMinMm: 1.92,
   buildingToXyRatio: (25 / 130) / 0.25,
   // Part A section 10 normalises the whole stack (base, terrain and tallest
@@ -81,6 +81,10 @@ export const PROFILE = {
   // on central London it gave ordinary buildings their tallest on the model.
   // Overridable per preview via config.buildingLogKneeM.
   buildingLogKneeM: 40,
+  // FDM layers the preview is stepped into (layers.js), from the print
+  // recipe (ProofGen prusa_sovol_sv08.ini). null leaves surfaces smooth.
+  printFirstLayerMm: 0.3,
+  printLayerMm: 0.2,
 };
 
 // Per-frame profile: horizontal and building scales for this footprint.
