@@ -127,7 +127,7 @@ function plasterTextures(base, seed = 7) {
   return { map, bumpMap };
 }
 
-export function buildRoom(scene, renderer, disposables) {
+export function buildRoom(scene, renderer, disposables, { wall: wallColour = 0xdcd3c6 } = {}) {
   const keep = (...items) => { disposables.push(...items); return items[0]; };
   const aniso = renderer.capabilities.getMaxAnisotropy();
   const tex = (t) => { t.anisotropy = aniso; return keep(t); };
@@ -140,7 +140,7 @@ export function buildRoom(scene, renderer, disposables) {
   };
 
   // Wall and floor.
-  const plaster = plasterTextures(0xdcd3c6);
+  const plaster = plasterTextures(wallColour);
   const wallMat = keep(new THREE.MeshStandardMaterial({
     map: tex(plaster.map), bumpMap: tex(plaster.bumpMap), bumpScale: 0.6, roughness: 0.95,
   }));
