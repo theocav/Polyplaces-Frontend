@@ -45,6 +45,14 @@ const SHADOW_MAP = typeof matchMedia === 'function' && matchMedia('(max-width: 6
 //   model/room   env and hemi fill, key light strength and direction, backdrop
 //   rim          a cool back light in the close-up, picking out roof edges
 //   edges        ink lines along building edges, or null
+//   layerLines   lines along the printed layer steps, or null
+// Line specs are [colour, close-up opacity, room opacity].
+
+// The layer lines are the faint ridges every FDM print shows. Without them
+// stepped terrain reads as blank white: each tread faces the light the same
+// way and the 0.2 mm risers are too thin to catch it.
+const LAYER_LINES = [0x5f574d, 0.5, 0.55];
+
 export const LOOKS = {
   current: {
     exposure: 1.1,
@@ -52,6 +60,7 @@ export const LOOKS = {
     room: { wall: 0xdcd3c6, env: 0.45, hemi: 0.35, sun: 5.5, sunPos: [-2.4, 2.6, 1.7] },
     rim: 0,
     edges: null,
+    layerLines: LAYER_LINES,
   },
   // Gallery: a low raking sun and very little fill, so every street is a
   // shadowed channel; a warm clay wall the white piece stands out from.
@@ -61,6 +70,7 @@ export const LOOKS = {
     room: { wall: 0xb3a28d, env: 0.16, hemi: 0.18, sun: 9, sunPos: [-1.5, 3.1, 1.05] },
     rim: 0,
     edges: null,
+    layerLines: LAYER_LINES,
   },
   // Architect's model: soft, even light with fine ink lines along every
   // building edge, the way a white card model is photographed.
@@ -69,16 +79,18 @@ export const LOOKS = {
     model: { env: 0.3, hemi: 0.35, sun: 3.4, sunDir: [-0.75, 0.9, 0.5], background: null },
     room: { wall: 0xcfc4b4, env: 0.3, hemi: 0.3, sun: 5.5, sunPos: [-2.4, 2.6, 1.7] },
     rim: 0,
-    edges: [0x5a5048, 0.55, 0.3], // colour, close-up opacity, room opacity
+    edges: [0x5a5048, 0.55, 0.3],
+    layerLines: LAYER_LINES,
   },
   // Dark studio: the white piece on charcoal, a raking key and a cool rim
   // light from behind, like a product shot.
   c: {
-    exposure: 1.05,
-    model: { env: 0.1, hemi: 0.1, sun: 6.5, sunDir: [-0.85, 0.45, 0.4], background: 0x24221f },
-    room: { wall: 0x2a2e31, env: 0.2, hemi: 0.15, sun: 10, sunPos: [-1.3, 3.2, 1.1] },
+    exposure: 0.95,
+    model: { env: 0.1, hemi: 0.1, sun: 5, sunDir: [-0.85, 0.45, 0.4], background: 0x24221f },
+    room: { wall: 0x2a2e31, env: 0.2, hemi: 0.15, sun: 8, sunPos: [-1.3, 3.2, 1.1] },
     rim: 3,
     edges: null,
+    layerLines: LAYER_LINES,
   },
 };
 
@@ -108,14 +120,16 @@ export function createPreview(container, opts) {
   let views = {};
   let active = null;
   let dirty = true;
-  const edgeMaterials = {};
-  const edgeMaterial = (opacity) => {
-    if (!look.edges) return null;
-    if (!edgeMaterials[opacity]) {
-      edgeMaterials[opacity] = new THREE.LineBasicMaterial({ color: look.edges[0], transparent: true, opacity, depthWrite: false });
-      disposables.push(edgeMaterials[opacity]);
+  const lineMaterials = {};
+  // A look's line spec for one view: 1 = close-up, 2 = room.
+  const lineMaterial = (spec, view) => {
+    if (!spec) return null;
+    const key = `${spec[0]}/${spec[view]}`;
+    if (!lineMaterials[key]) {
+      lineMaterials[key] = new THREE.LineBasicMaterial({ color: spec[0], transparent: true, opacity: spec[view], depthWrite: false });
+      disposables.push(lineMaterials[key]);
     }
-    return edgeMaterials[opacity];
+    return lineMaterials[key];
   };
   const disposables = [];
   const stageProgress = {};
@@ -204,7 +218,9 @@ export function createPreview(container, opts) {
   worker.postMessage({ type: 'run', bbox, config });
 
   // One sculpture mesh set per view; geometry and material are shared.
-  function buildSculpture(msg, material, edgeMaterial) {
+  function buildSculpture(msg, material, view) {
+    const edgeMaterial = lineMaterial(look.edges, view);
+    const layerMaterial = lineMaterial(look.layerLines, view);
     // Print space is Z up with Y north; three is Y up, so north becomes -Z.
     const group = new THREE.Group();
     group.rotation.x = -Math.PI / 2;
@@ -215,6 +231,7 @@ export function createPreview(container, opts) {
       mesh.receiveShadow = true;
       group.add(mesh);
       if (layer.edges && edgeMaterial) group.add(new THREE.LineSegments(layer.edges, edgeMaterial));
+      if (layer.lineGeometry && layerMaterial) group.add(new THREE.LineSegments(layer.lineGeometry, layerMaterial));
     }
     return group;
   }
@@ -224,7 +241,7 @@ export function createPreview(container, opts) {
     scene.environment = env;
     scene.environmentIntensity = look.model.env;
     if (look.model.background != null) scene.background = new THREE.Color(look.model.background);
-    const sculpture = buildSculpture(msg, material, edgeMaterial(look.edges?.[1]));
+    const sculpture = buildSculpture(msg, material, 1);
     scene.add(sculpture);
     scene.add(new THREE.HemisphereLight(0xffffff, 0xb9a98f, look.model.hemi));
 
@@ -290,13 +307,14 @@ export function createPreview(container, opts) {
     // Sculpture scaled to w x h metres, north up, its up axis turned to +Y
     // of the returned group and its base at Y = 0. Each axis is scaled to
     // its side (the IKEA openings differ from the product shapes by a few
-    // percent, which a stretch hides better than a margin); height takes the
-    // mean of the two.
+    // percent, which a stretch hides better than a margin). Height stays in
+    // true millimetres: the print pipeline resizes X/Y only, so the piece and
+    // its layer steps are the same height at every size.
     function fitted(w, h) {
       const sw = w / msg.size.widthMm;
       const sh = h / msg.size.depthMm;
-      const sv = (sw + sh) / 2;
-      const sculpture = buildSculpture(msg, material, edgeMaterial(look.edges?.[2]));
+      const sv = 0.001;
+      const sculpture = buildSculpture(msg, material, 2);
       sculpture.name = 'sculpture';
       // Sculpture axes before its own rotation: x east, y north, z up.
       sculpture.scale.set(sw, sh, sv);
@@ -516,6 +534,14 @@ export function createPreview(container, opts) {
       geom.computeVertexNormals();
       layer.geometry = geom;
       disposables.push(geom);
+      if (look.layerLines && layer.lines?.length) {
+        // Lifted a hair off the tread they edge, so depth testing keeps them.
+        const lifted = layer.lines.slice();
+        for (let k = 2; k < lifted.length; k += 3) lifted[k] += 0.03;
+        layer.lineGeometry = new THREE.BufferGeometry();
+        layer.lineGeometry.setAttribute('position', new THREE.BufferAttribute(lifted, 3));
+        disposables.push(layer.lineGeometry);
+      }
       if (look.edges && name === 'buildings') {
         layer.edges = new THREE.EdgesGeometry(geom, 30);
         disposables.push(layer.edges);

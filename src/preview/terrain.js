@@ -7,6 +7,11 @@ import { pool, fetchWithRetry } from './net.js';
 
 const TILE_PX = 512;
 
+// Mapterhorn's worldwide layer (Copernicus GLO-30, ~30 m) ends at z12; z13
+// and up exist only where a national high-resolution survey was merged in.
+// A tile missing at the chosen zoom is read from its ancestors down to here.
+const MIN_FALLBACK_ZOOM = 10;
+
 export function terrainGridSize(rect, profile) {
   const W = rect.xmax - rect.xmin;
   const H = rect.ymax - rect.ymin;
@@ -118,59 +123,98 @@ export async function buildTerrain(frame, profile, config, { onProgress, onWarni
   const mosaicW = (range.x1 - range.x0 + 1) * TILE_PX;
   const mosaicH = (range.y1 - range.y0 + 1) * TILE_PX;
 
-  // Group grid points by the tile their nearest (truncated) pixel falls in.
+  // Group grid points by the tile their nearest (truncated) pixel falls in,
+  // keeping each point's fractional tile position for fallback sampling.
   const byTile = new Map();
-  const pixel = new Uint32Array(nx * ny);
+  const fxs = new Float64Array(nx * ny);
+  const fys = new Float64Array(nx * ny);
   for (let j = 0; j < ny; j++) {
     for (let i = 0; i < nx; i++) {
       const [lon, lat] = frame.toLonLat(xs[i], ys[j]);
       const [fx, fy] = tileFrac(lon, lat, z);
       const px = Math.min(Math.max(Math.trunc((fx - range.x0) * TILE_PX), 0), mosaicW - 1);
       const py = Math.min(Math.max(Math.trunc((fy - range.y0) * TILE_PX), 0), mosaicH - 1);
-      const key = `${range.x0 + Math.floor(px / TILE_PX)}/${range.y0 + Math.floor(py / TILE_PX)}`;
+      const tx = range.x0 + Math.floor(px / TILE_PX);
+      const ty = range.y0 + Math.floor(py / TILE_PX);
       const idx = j * nx + i;
-      pixel[idx] = (py % TILE_PX) * TILE_PX + (px % TILE_PX);
-      let list = byTile.get(key);
-      if (!list) byTile.set(key, (list = []));
-      list.push(idx);
+      fxs[idx] = Math.min(Math.max(fx, tx), tx + 1 - 1 / TILE_PX);
+      fys[idx] = Math.min(Math.max(fy, ty), ty + 1 - 1 / TILE_PX);
+      const key = `${tx}/${ty}`;
+      let group = byTile.get(key);
+      if (!group) byTile.set(key, (group = { tx, ty, points: [] }));
+      group.points.push(idx);
     }
   }
 
-  // Missing tiles read as the sea-level pixel (128,0,0) = 0 m.
-  const raw = new Float64Array(nx * ny);
+  // Neighbouring tiles share ancestors, so each tile is fetched once.
   const base = config.tilesBaseUrl.replace(/\/$/, '');
+  const tiles = new Map();
+  const loadTile = (zz, x, y) => {
+    const key = `${zz}/${x}/${y}`;
+    if (!tiles.has(key)) {
+      tiles.set(key, (async () => {
+        try {
+          const res = await fetchWithRetry(`${base}/${key}.webp`, {}, profile, signal);
+          return res && res.ok ? await decodeTile(await res.blob()) : null;
+        } catch (err) {
+          if (signal?.aborted) throw err;
+          return null;
+        }
+      })());
+    }
+    return tiles.get(key);
+  };
+
+  // At the chosen zoom each point takes its nearest pixel (Part A); read from
+  // a coarser ancestor it is interpolated bilinearly, so ~30 m data doesn't
+  // step across a 10 m grid. Missing tiles read as sea level, 0 m.
+  const raw = new Float64Array(nx * ny);
   let done = 0;
   let missing = 0;
-  const keys = [...byTile.keys()];
-  await pool(keys, profile.tileConcurrency, async (key) => {
-    const url = `${base}/${z}/${key}.webp`;
+  let coarsest = z;
+  const groups = [...byTile.values()];
+  await pool(groups, profile.tileConcurrency, async ({ tx, ty, points }) => {
     let rgba = null;
-    try {
-      const res = await fetchWithRetry(url, {}, profile, signal);
-      if (res && res.ok) rgba = await decodeTile(await res.blob());
-    } catch (err) {
-      if (signal?.aborted) throw err;
+    let d = 0;
+    for (; z - d >= Math.min(MIN_FALLBACK_ZOOM, z); d++) {
+      rgba = await loadTile(z - d, tx >> d, ty >> d);
+      if (rgba) break;
     }
-    if (rgba) {
-      for (const idx of byTile.get(key)) {
-        const p = pixel[idx] * 4;
-        raw[idx] = terrariumDecode(rgba[p], rgba[p + 1], rgba[p + 2]);
+    const at = (px, py) => {
+      const p = (py * TILE_PX + px) * 4;
+      return terrariumDecode(rgba[p], rgba[p + 1], rgba[p + 2]);
+    };
+    if (rgba && d === 0) {
+      for (const idx of points) {
+        raw[idx] = at(Math.trunc((fxs[idx] - tx) * TILE_PX), Math.trunc((fys[idx] - ty) * TILE_PX));
+      }
+    } else if (rgba) {
+      coarsest = Math.min(coarsest, z - d);
+      const scale = 2 ** d;
+      const ox = tx >> d, oy = ty >> d;
+      for (const idx of points) {
+        const u = Math.min(Math.max((fxs[idx] / scale - ox) * TILE_PX - 0.5, 0), TILE_PX - 1);
+        const v = Math.min(Math.max((fys[idx] / scale - oy) * TILE_PX - 0.5, 0), TILE_PX - 1);
+        const i0 = Math.min(Math.floor(u), TILE_PX - 2), j0 = Math.min(Math.floor(v), TILE_PX - 2);
+        const fu = u - i0, fv = v - j0;
+        raw[idx] = (at(i0, j0) * (1 - fu) + at(i0 + 1, j0) * fu) * (1 - fv)
+          + (at(i0, j0 + 1) * (1 - fu) + at(i0 + 1, j0 + 1) * fu) * fv;
       }
     } else {
       missing++;
     }
     done++;
-    onProgress?.(done / keys.length);
+    onProgress?.(done / groups.length);
   });
 
-  if (missing === keys.length) {
+  if (missing === groups.length) {
     onWarning?.('terrain_flat', 'Elevation tiles were unavailable, so the terrain is shown flat.');
     return { nx, ny, xs, ys, z: new Float64Array(nx * ny), flat: true };
   }
   if (missing > 0) onWarning?.('tile_missing', `${missing} elevation tile(s) were missing and read as sea level.`);
 
   const norm = normalise(raw, profile);
-  return { nx, ny, xs, ys, z: gaussianSmooth(norm, nx, ny, profile.terrainSmoothSigma), flat: false };
+  return { nx, ny, xs, ys, z: gaussianSmooth(norm, nx, ny, profile.terrainSmoothSigma), flat: false, zoom: coarsest };
 }
 
 // Part A sample_z: bilinear, query clamped to the grid.
