@@ -38,6 +38,62 @@ const SCULPTURE_COLOR = 0xeee8dd;
 // Shadow map size for the room light; phones get a smaller one.
 const SHADOW_MAP = typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches ? 2048 : 4096;
 
+// Lighting looks; 'c' is the store's. Every look keeps the one matte sculpture colour; only the
+// light, the backdrop and (for 'b') drawn edges change, so the piece always
+// reads as a single material.
+//   exposure     tone-mapping exposure
+//   model/room   env and hemi fill, key light strength and direction, backdrop
+//   rim          a cool back light in the close-up, picking out roof edges
+//   edges        ink lines along building edges, or null
+//   layerLines   lines along the printed layer steps, or null
+// Line specs are [colour, close-up opacity, room opacity].
+
+// The layer lines are the faint ridges every FDM print shows. Without them
+// stepped terrain reads as blank white: each tread faces the light the same
+// way and the 0.2 mm risers are too thin to catch it.
+const LAYER_LINES = [0x5f574d, 0.5, 0.55];
+
+export const LOOKS = {
+  current: {
+    exposure: 1.1,
+    model: { env: 0.45, hemi: 0.5, sun: 3.8, sunDir: [-0.75, 0.9, 0.5], background: null },
+    room: { wall: 0xdcd3c6, env: 0.45, hemi: 0.35, sun: 5.5, sunPos: [-2.4, 2.6, 1.7] },
+    rim: 0,
+    edges: null,
+    layerLines: LAYER_LINES,
+  },
+  // Gallery: a low raking sun and very little fill, so every street is a
+  // shadowed channel; a warm clay wall the white piece stands out from.
+  a: {
+    exposure: 1.0,
+    model: { env: 0.1, hemi: 0.18, sun: 6.5, sunDir: [-0.85, 0.42, 0.3], background: null },
+    room: { wall: 0xb3a28d, env: 0.16, hemi: 0.18, sun: 9, sunPos: [-1.5, 3.1, 1.05] },
+    rim: 0,
+    edges: null,
+    layerLines: LAYER_LINES,
+  },
+  // Architect's model: soft, even light with fine ink lines along every
+  // building edge, the way a white card model is photographed.
+  b: {
+    exposure: 1.0,
+    model: { env: 0.3, hemi: 0.35, sun: 3.4, sunDir: [-0.75, 0.9, 0.5], background: null },
+    room: { wall: 0xcfc4b4, env: 0.3, hemi: 0.3, sun: 5.5, sunPos: [-2.4, 2.6, 1.7] },
+    rim: 0,
+    edges: [0x5a5048, 0.55, 0.3],
+    layerLines: LAYER_LINES,
+  },
+  // Dark studio: the white piece on charcoal, a raking key and a cool rim
+  // light from behind, like a product shot.
+  c: {
+    exposure: 0.95,
+    model: { env: 0.1, hemi: 0.1, sun: 5, sunDir: [-0.85, 0.45, 0.4], background: 0x24221f },
+    room: { wall: 0x2a2e31, env: 0.2, hemi: 0.15, sun: 8, sunPos: [-1.3, 3.2, 1.1] },
+    rim: 3,
+    edges: null,
+    layerLines: LAYER_LINES,
+  },
+};
+
 const ROOM = {
   background: 0xd6cdc0, // beyond the wall's edges, rarely seen
   hangGap: 0.24, // sideboard top to frame bottom, metres
@@ -52,8 +108,9 @@ export function hasWebGL2() {
 }
 
 export function createPreview(container, opts) {
-  const { bbox, config = {}, room = null, onProgress, onWarning, onError, onReady } = opts;
+  const { bbox, config = {}, room = null, look: lookName = 'c', onProgress, onWarning, onError, onReady } = opts;
   const rotated = !!room?.rotated;
+  const look = LOOKS[lookName] || LOOKS.c;
   let disposed = false;
   let finished = false;
   let worker = null;
@@ -63,6 +120,17 @@ export function createPreview(container, opts) {
   let views = {};
   let active = null;
   let dirty = true;
+  const lineMaterials = {};
+  // A look's line spec for one view: 1 = close-up, 2 = room.
+  const lineMaterial = (spec, view) => {
+    if (!spec) return null;
+    const key = `${spec[0]}/${spec[view]}`;
+    if (!lineMaterials[key]) {
+      lineMaterials[key] = new THREE.LineBasicMaterial({ color: spec[0], transparent: true, opacity: spec[view], depthWrite: false });
+      disposables.push(lineMaterials[key]);
+    }
+    return lineMaterials[key];
+  };
   const disposables = [];
   const stageProgress = {};
 
@@ -150,7 +218,9 @@ export function createPreview(container, opts) {
   worker.postMessage({ type: 'run', bbox, config });
 
   // One sculpture mesh set per view; geometry and material are shared.
-  function buildSculpture(msg, material) {
+  function buildSculpture(msg, material, view) {
+    const edgeMaterial = lineMaterial(look.edges, view);
+    const layerMaterial = lineMaterial(look.layerLines, view);
     // Print space is Z up with Y north; three is Y up, so north becomes -Z.
     const group = new THREE.Group();
     group.rotation.x = -Math.PI / 2;
@@ -160,6 +230,8 @@ export function createPreview(container, opts) {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       group.add(mesh);
+      if (layer.edges && edgeMaterial) group.add(new THREE.LineSegments(layer.edges, edgeMaterial));
+      if (layer.lineGeometry && layerMaterial) group.add(new THREE.LineSegments(layer.lineGeometry, layerMaterial));
     }
     return group;
   }
@@ -167,10 +239,11 @@ export function createPreview(container, opts) {
   function modelView(msg, material, env) {
     const scene = new THREE.Scene();
     scene.environment = env;
-    scene.environmentIntensity = 0.45;
-    const sculpture = buildSculpture(msg, material);
+    scene.environmentIntensity = look.model.env;
+    if (look.model.background != null) scene.background = new THREE.Color(look.model.background);
+    const sculpture = buildSculpture(msg, material, 1);
     scene.add(sculpture);
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xb9a98f, 0.5));
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xb9a98f, look.model.hemi));
 
     const box = new THREE.Box3().setFromObject(sculpture);
     const center = box.getCenter(new THREE.Vector3());
@@ -179,8 +252,8 @@ export function createPreview(container, opts) {
 
     // Raking light from the front left (south-west), with shadows, so streets
     // and building edges read the way they do on the printed piece.
-    const sun = new THREE.DirectionalLight(0xfffaf2, 3.8);
-    sun.position.copy(center).add(new THREE.Vector3(-0.75, 0.9, 0.5).multiplyScalar(span * 2));
+    const sun = new THREE.DirectionalLight(0xfffaf2, look.model.sun);
+    sun.position.copy(center).add(new THREE.Vector3(...look.model.sunDir).multiplyScalar(span * 2));
     sun.target.position.copy(center);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -190,13 +263,19 @@ export function createPreview(container, opts) {
       left: -span * 0.8, right: span * 0.8, top: span * 0.8, bottom: -span * 0.8, near: span * 0.5, far: span * 5,
     });
     scene.add(sun, sun.target);
+    if (look.rim) {
+      const rim = new THREE.DirectionalLight(0xdfe8ff, look.rim);
+      rim.position.copy(center).add(new THREE.Vector3(0.7, 0.5, -0.9).multiplyScalar(span * 2));
+      rim.target.position.copy(center);
+      scene.add(rim, rim.target);
+    }
 
     const aspect = (container.clientWidth || 1) / (container.clientHeight || 1);
     const camera = new THREE.PerspectiveCamera(35, aspect, span / 200, span * 20);
     // Fit the model to the narrower of the two fields of view.
     const halfV = THREE.MathUtils.degToRad(35 / 2);
     const halfFit = Math.min(halfV, Math.atan(Math.tan(halfV) * aspect));
-    const dist = (span / 2 / Math.tan(halfFit)) * 1.15;
+    const dist = (span / 2 / Math.tan(halfFit)) * 1.02;
     // North-up, looking north from the south at a top-oblique angle.
     camera.position.set(center.x, center.y + dist * 0.78, center.z + dist * 0.62);
 
@@ -211,9 +290,9 @@ export function createPreview(container, opts) {
   function roomView(msg, material, env) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(ROOM.background);
-    buildRoom(scene, renderer, disposables);
+    buildRoom(scene, renderer, disposables, { wall: look.room.wall });
     scene.environment = env;
-    scene.environmentIntensity = 0.45;
+    scene.environmentIntensity = look.room.env;
 
     // Hang height and camera are fixed by the size's largest frame (or the
     // bare piece when the size has no frames), so swapping frames never
@@ -228,13 +307,14 @@ export function createPreview(container, opts) {
     // Sculpture scaled to w x h metres, north up, its up axis turned to +Y
     // of the returned group and its base at Y = 0. Each axis is scaled to
     // its side (the IKEA openings differ from the product shapes by a few
-    // percent, which a stretch hides better than a margin); height takes the
-    // mean of the two.
+    // percent, which a stretch hides better than a margin). Height stays in
+    // true millimetres: the print pipeline resizes X/Y only, so the piece and
+    // its layer steps are the same height at every size.
     function fitted(w, h) {
       const sw = w / msg.size.widthMm;
       const sh = h / msg.size.depthMm;
-      const sv = (sw + sh) / 2;
-      const sculpture = buildSculpture(msg, material);
+      const sv = 0.001;
+      const sculpture = buildSculpture(msg, material, 2);
       sculpture.name = 'sculpture';
       // Sculpture axes before its own rotation: x east, y north, z up.
       sculpture.scale.set(sw, sh, sv);
@@ -325,9 +405,9 @@ export function createPreview(container, opts) {
 
     // Daylight from a window off to the left: a wide, soft-edged spot that
     // leaves a gentle pool of light on the wall, plus a dim warm bounce.
-    scene.add(new THREE.HemisphereLight(0xfff8ee, 0x8a7258, 0.35));
-    const sun = new THREE.SpotLight(0xfff0dc, 5.5, 0, 0.62, 0.95, 0);
-    sun.position.set(-2.4, 2.6, 1.7);
+    scene.add(new THREE.HemisphereLight(0xfff8ee, 0x8a7258, look.room.hemi));
+    const sun = new THREE.SpotLight(0xfff0dc, look.room.sun, 0, 0.62, 0.95, 0);
+    sun.position.set(...look.room.sunPos);
     sun.target.position.copy(centre).add(new THREE.Vector3(0.1, -0.3, 0.1));
     sun.castShadow = true;
     // The shadow map covers only the middle of the cone (the sideboard top
@@ -346,13 +426,13 @@ export function createPreview(container, opts) {
     const halfV = THREE.MathUtils.degToRad(20);
     const halfFit = Math.min(halfV, Math.atan(Math.tan(halfV) * aspect));
 
-    // Two camera poses. Wall: the frame about a third of the view with the
-    // sideboard top below it, seen slightly from one side. Desk: looking
+    // Two camera poses. Wall: the frame about half the view with the edge of
+    // the sideboard top below it, seen slightly from one side. Desk: looking
     // down at the piece on the sideboard, wall and grasses behind it.
-    const wallTarget = new THREE.Vector3(centre.x, centre.y - hangH * 0.45, 0.03);
-    const wallDist = Math.max(0.42, hangH * 1.45) / Math.tan(halfFit);
+    const wallTarget = new THREE.Vector3(centre.x, centre.y - hangH * 0.2, 0.03);
+    const wallDist = Math.max(0.3, hangH * 0.95) / Math.tan(halfFit);
     const deskTarget = deskSpot.clone().add(new THREE.Vector3(0, 0.03, 0));
-    const deskDist = Math.max(0.5, Math.max(bareW, bareH) * 1.8) / Math.tan(halfFit);
+    const deskDist = Math.max(0.34, Math.max(bareW, bareH) * 1.2) / Math.tan(halfFit);
     const poses = {
       wall: {
         target: wallTarget,
@@ -440,20 +520,32 @@ export function createPreview(container, opts) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.AgXToneMapping;
-    renderer.toneMappingExposure = 1.1;
+    renderer.toneMappingExposure = look.exposure;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
     renderer.domElement.style.display = 'block';
     renderer.domElement.style.touchAction = 'none';
 
-    for (const layer of Object.values(msg.layers)) {
+    for (const [name, layer] of Object.entries(msg.layers)) {
       if (!layer.positions.length) continue;
       const geom = new THREE.BufferGeometry();
       geom.setAttribute('position', new THREE.BufferAttribute(layer.positions, 3));
       geom.computeVertexNormals();
       layer.geometry = geom;
       disposables.push(geom);
+      if (look.layerLines && layer.lines?.length) {
+        // Lifted a hair off the tread they edge, so depth testing keeps them.
+        const lifted = layer.lines.slice();
+        for (let k = 2; k < lifted.length; k += 3) lifted[k] += 0.03;
+        layer.lineGeometry = new THREE.BufferGeometry();
+        layer.lineGeometry.setAttribute('position', new THREE.BufferAttribute(lifted, 3));
+        disposables.push(layer.lineGeometry);
+      }
+      if (look.edges && name === 'buildings') {
+        layer.edges = new THREE.EdgesGeometry(geom, 30);
+        disposables.push(layer.edges);
+      }
     }
     const material = new THREE.MeshStandardMaterial({
       color: SCULPTURE_COLOR,
