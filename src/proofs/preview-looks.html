@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Preview Looks</title>
+<!-- Dev-only sheet (src/ is not deployed): the 3D preview in each look, side
+     by side, on the same place. Run `npm run build:preview` first.
+     http://localhost:3000/src/proofs/preview-looks.html?view=room&frame=oak
+     Query: looks=current,a,b,c  view=room|model  frame=oak|black|white|none
+            size=small|medium|large  bbox=S,W,N,E -->
+<style>
+  body { margin: 0; padding: 16px; background: #f7f4ef; font: 13px/1.4 system-ui, sans-serif; color: #1a1714; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(860px, 1fr)); gap: 12px; }
+  figure { margin: 0; background: #fff; border: 1px solid rgba(26,23,20,.1); border-radius: 8px; overflow: hidden; }
+  .stage { position: relative; aspect-ratio: 4 / 3; background: radial-gradient(ellipse at 50% 40%, #f7f4ef 0%, #efe9df 100%); }
+  figcaption { padding: 8px 10px; }
+</style>
+</head>
+<body>
+<div class="grid" id="grid"></div>
+<script type="module">
+  import { createPreview } from '/assets/js/preview/preview.js?v=c53fea08';
+
+  const q = new URLSearchParams(location.search);
+  const looks = (q.get('looks') || 'current,a,b,c').split(',');
+  const view = q.get('view') || 'room';
+  const frame = q.get('frame') === 'none' ? null : q.get('frame') || 'oak';
+  const size = q.get('size') || 'large';
+  // Default: around St Paul's, London - dense buildings, the river, some relief.
+  const bbox = (q.get('bbox') || '51.5090,-0.1050,51.5180,-0.0905').split(',').map(Number);
+  const bareMm = { small: [130, 130], medium: [210, 297], large: [290, 290] }[size];
+  window.ready = 0;
+
+  for (const look of looks) {
+    const fig = document.createElement('figure');
+    fig.innerHTML = `<div class="stage"></div><figcaption>${look}</figcaption>`;
+    document.getElementById('grid').append(fig);
+    const preview = createPreview(fig.querySelector('.stage'), {
+      bbox, config: {}, look,
+      room: { size, colour: frame, bareMm, rotated: false },
+      onReady() { preview.setView(view); window.ready++; },
+      onError(code, msg) { fig.querySelector('figcaption').textContent = `${look}: ${code} ${msg}`; window.ready++; },
+    });
+  }
+</script>
+</body>
+</html>
