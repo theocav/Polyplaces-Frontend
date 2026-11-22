@@ -148,12 +148,22 @@ export function buildFootprints(building, buildingPart, sampleZ, profile, onWarn
   for (const { it, height: tagged, provided } of kept) {
     const height = provided || fallback == null ? tagged : fallback;
     const minHeight = resolveMinHeight(it.props, profile);
+    // Seated on the highest ground under the footprint, so a building on a
+    // slope stands clear of the hillside instead of sinking into it; its
+    // bottom reaches below the lowest ground.
     const [rx, ry] = representativePoint(it.geom);
-    const baseZ = sampleZ(rx, ry);
-    // baseZ is already preview mm; building metres use their own scale.
+    let groundLo = sampleZ(rx, ry), groundHi = groundLo;
+    for (const poly of it.geom) for (const [x, y] of poly[0]) {
+      const z = sampleZ(x, y);
+      if (z < groundLo) groundLo = z;
+      if (z > groundHi) groundHi = z;
+    }
+    // Ground is already preview mm; building metres use their own scale.
+    // Every building rises at least minBuildingMm, so small houses still
+    // print as buildings.
     const kb = profile.buildingMmPerM;
-    const zBottom = Math.max(baseZ + (compressHeight(minHeight, profile) - profile.buildingSinkM) * kb, -profile.baseMinMm);
-    const zTop = baseZ + compressHeight(minHeight + height, profile) * kb;
+    const zBottom = Math.max(groundLo + (compressHeight(minHeight, profile) - profile.buildingSinkM) * kb, -profile.baseMinMm);
+    const zTop = groundHi + Math.max(compressHeight(minHeight + height, profile) * kb, minHeight > 0 ? 0 : profile.minBuildingMm);
     if (!(zTop > zBottom) || height <= 0 || it.area < 1e-10) continue;
     out.push({ geom: it.geom, zBottom, zTop, heightProvided: provided, area: it.area, heightM: minHeight + height });
   }

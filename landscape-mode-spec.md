@@ -55,6 +55,9 @@ persisted, because it determines what actually gets fabricated.
 
 ### Required backend work (not yet implemented)
 
+Full backend spec, including fulfilment and acceptance checks:
+`landscape-backend-spec.md`. Summary:
+
 1. Read `item.landscape` (boolean; treat anything non-`true` as `false`).
 2. Set `metadata.landscape` on the Stripe Checkout Session/PaymentIntent,
    following the same pattern as `metadata.framed`: comma-joined cart indices

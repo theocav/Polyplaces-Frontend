@@ -45,18 +45,21 @@ function hashFile(filePath) {
 }
 
 // Build a map of  asset-path-fragment → hash
-const hashes = {};
-for (const rel of ASSETS) {
-  const abs = path.join(ROOT, rel);
-  if (!fs.existsSync(abs)) { console.warn(`  [skip] ${rel} not found`); continue; }
-  hashes[rel] = hashFile(abs);
-  // Also match the ./  and ../ prefix variants used in HTML
-  hashes['./' + rel]  = hashes[rel];
-  hashes['../../' + rel] = hashes[rel];
+function buildHashes() {
+  const hashes = {};
+  for (const rel of ASSETS) {
+    const abs = path.join(ROOT, rel);
+    if (!fs.existsSync(abs)) { console.warn(`  [skip] ${rel} not found`); continue; }
+    hashes[rel] = hashFile(abs);
+    // Also match the ./  and ../ prefix variants used in HTML
+    hashes['./' + rel]  = hashes[rel];
+    hashes['../../' + rel] = hashes[rel];
+  }
+  return hashes;
 }
 
 // Replace ?v=<anything> (or add ?v=) for each known asset in HTML files
-function rewrite(html) {
+function rewrite(html, hashes) {
   let out = html;
   for (const [fragment, hash] of Object.entries(hashes)) {
     // Match the fragment followed by optional ?v=... and then a quote/space
@@ -75,21 +78,28 @@ function rewrite(html) {
   return out;
 }
 
-const htmlFiles = findHtml(ROOT);
-let changed = 0;
+function main() {
+  const hashes = buildHashes();
+  const htmlFiles = findHtml(ROOT);
+  let changed = 0;
 
-for (const file of htmlFiles) {
-  const original = fs.readFileSync(file, 'utf8');
-  const updated  = rewrite(original);
-  if (updated !== original) {
-    fs.writeFileSync(file, updated, 'utf8');
-    console.log(`  updated  ${path.relative(ROOT, file)}`);
-    changed++;
+  for (const file of htmlFiles) {
+    const original = fs.readFileSync(file, 'utf8');
+    const updated  = rewrite(original, hashes);
+    if (updated !== original) {
+      fs.writeFileSync(file, updated, 'utf8');
+      console.log(`  updated  ${path.relative(ROOT, file)}`);
+      changed++;
+    }
+  }
+
+  console.log(`\nDone. ${changed} file(s) updated.`);
+  console.log('Hashes:');
+  for (const [k, v] of Object.entries(hashes)) {
+    if (!k.startsWith('./') && !k.startsWith('../../')) console.log(`  ${k}  →  ${v}`);
   }
 }
 
-console.log(`\nDone. ${changed} file(s) updated.`);
-console.log('Hashes:');
-for (const [k, v] of Object.entries(hashes)) {
-  if (!k.startsWith('./') && !k.startsWith('../../')) console.log(`  ${k}  →  ${v}`);
-}
+if (require.main === module) main();
+
+module.exports = { rewrite };

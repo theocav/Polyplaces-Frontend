@@ -81,6 +81,8 @@ export const PROFILE = {
   // on central London it gave ordinary buildings their tallest on the model.
   // Overridable per preview via config.buildingLogKneeM.
   buildingLogKneeM: 40,
+  // Smallest height a building stands above its ground: three print layers.
+  minBuildingMm: 0.6,
   // FDM layers the preview is stepped into (layers.js), from the print
   // recipe (ProofGen prusa_sovol_sv08.ini). null leaves surfaces smooth.
   printFirstLayerMm: 0.3,

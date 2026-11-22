@@ -40,15 +40,21 @@ function parseEnvFile(contents) {
   return parsed;
 }
 
-let fileEnv = {};
-if (fs.existsSync(envPath)) {
-  fileEnv = parseEnvFile(fs.readFileSync(envPath, 'utf8'));
+function main() {
+  let fileEnv = {};
+  if (fs.existsSync(envPath)) {
+    fileEnv = parseEnvFile(fs.readFileSync(envPath, 'utf8'));
+  }
+
+  const env = { ...defaultEnv, ...fileEnv };
+
+  const output = `window.__POLYPLACES_ENV__ = ${JSON.stringify(env, null, 2)};\n`;
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  fs.writeFileSync(outputPath, output, 'utf8');
+
+  console.log(`Generated ${path.relative(rootDir, outputPath)} from .env`);
 }
 
-const env = { ...defaultEnv, ...fileEnv };
+if (require.main === module) main();
 
-const output = `window.__POLYPLACES_ENV__ = ${JSON.stringify(env, null, 2)};\n`;
-fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-fs.writeFileSync(outputPath, output, 'utf8');
-
-console.log(`Generated ${path.relative(rootDir, outputPath)} from .env`);
+module.exports = { parseEnvFile };
