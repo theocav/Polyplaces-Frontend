@@ -302,7 +302,7 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 .map-toolbar-end>*{pointer-events:auto}
 .map-toolbar:has(.frame-controls[hidden]) .map-toolbar-end>*{visibility:hidden;pointer-events:none}
 .map-search{
-  position:relative;
+  position:relative;z-index:2;
   display:flex;gap:8px;align-items:center;
   background:rgba(255,255,255,0.92);border:1px solid var(--border);border-radius:999px;
   padding:6px 8px;box-shadow:0 8px 22px rgba(26,23,20,0.12);backdrop-filter:blur(8px);
@@ -360,6 +360,8 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 .order-status{background:var(--bg);border:1px solid var(--border);padding:12px 14px;font-size:12px;color:var(--mid);display:flex;gap:8px;align-items:flex-start;}
 .order-status::before{content:'\2139';color:var(--accent);font-size:13px;flex-shrink:0}
 .order-cta{display:flex;flex-direction:column;gap:10px;margin-top:auto;}
+/* Price + scale beside the button only show in the mobile bottom bar. */
+.order-buy-summary{display:none}
 .btn-order{background:var(--accent);color:white;border:none;font-family:var(--sans);font-size:13px;font-weight:500;padding:15px 24px;cursor:pointer;transition:all 0.2s;width:100%;text-align:center;border-radius:2px;}
 .btn-order:hover{background:var(--accent-lt);transform:translateY(-1px);}
 .btn-order:disabled{background:var(--light);cursor:not-allowed;transform:none}
@@ -438,7 +440,7 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 /* CART */
 .cart-drawer{
   position:fixed;top:0;right:0;width:360px;background:var(--white);
-  border-left:1px solid var(--border);box-shadow:-20px 0 50px var(--shadow);
+  border-left:1px solid var(--border);
   transform:translateX(100%);transition:transform 0.25s ease;z-index:900;
   display:flex;flex-direction:column;
   /* 100vh is wrong inside in-app browsers (Instagram, Facebook, TikTok): it
@@ -450,7 +452,8 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 @supports (height:100dvh){
   .cart-drawer{height:100dvh}
 }
-.cart-open .cart-drawer{transform:translateX(0)}
+/* Shadow only while open - parked off-screen it bled into the page edge. */
+.cart-open .cart-drawer{transform:translateX(0);box-shadow:-20px 0 50px var(--shadow)}
 .cart-overlay{
   position:fixed;inset:0;background:rgba(26,23,20,0.35);opacity:0;pointer-events:none;
   transition:opacity 0.25s ease;z-index:800;
@@ -524,9 +527,14 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
   .steps{grid-template-columns:1fr}.step{border-right:none;border-bottom:1px solid var(--border)}
   .reviews-grid{grid-template-columns:1fr}
   footer{grid-template-columns:1fr 1fr}
-  .configurator{grid-template-columns:1fr}
+  .configurator{grid-template-columns:1fr;min-height:0}
   .config-left,.config-right{border:none;border-bottom:1px solid var(--border)}
-  #store-map{min-height:420px}
+  /* Map first on single-column layouts: it is the product, not an afterthought. */
+  .config-map{order:-1;height:clamp(340px,58vh,560px)}
+  @supports (height:1svh){.config-map{height:clamp(340px,58svh,560px)}}
+  #store-map{min-height:0}
+  /* The page scrolls past the map, so keep the hint inside it. */
+  .map-hint,.map-hint.is-docked{position:absolute;bottom:12px}
   .cart-drawer{width:100%}
 }
 
@@ -538,7 +546,6 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
     height:100vh;
     height:var(--app-h,100vh);
     background:var(--white);border-left:1px solid var(--border);
-    box-shadow:-20px 0 50px var(--shadow);
     transform:translateX(100%);transition:transform 0.25s ease;
     align-items:flex-start;z-index:700;
     overflow-y:auto;-webkit-overflow-scrolling:touch;
@@ -546,11 +553,12 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
   @supports (height:100dvh){
     .nav-drawer{height:100dvh}
   }
-  .nav-open .nav-drawer{transform:translateX(0)}
+  /* Shadow only while open - parked off-screen it bled into the page edge. */
+  .nav-open .nav-drawer{transform:translateX(0);box-shadow:-20px 0 50px var(--shadow)}
   .nav-drawer-close{
     display:flex;align-items:center;justify-content:center;
-    position:absolute;top:12px;right:14px;
-    width:36px;height:36px;border:none;border-radius:50%;
+    position:absolute;top:8px;right:10px;
+    width:44px;height:44px;border:none;border-radius:50%;
     background:transparent;cursor:pointer;
     font-size:22px;line-height:1;color:var(--ink);
     transition:background 0.15s;
@@ -581,21 +589,51 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
   .reviews-grid{margin-top:32px}
   footer{grid-template-columns:1fr}
   .footer-bottom{flex-direction:column;gap:8px}
-  .store-hero{padding:24px 20px}
-  .store-hero-inner-wrap{padding:0 20px}
-  .config-left,.config-right{padding:24px 20px}
-  #store-map{min-height:360px}
-  .map-toolbar{flex-wrap:wrap}
-  .map-search{
-    flex-wrap:wrap;border-radius:16px;
-  }
-  .map-search input{width:100%}
-  .map-hint{white-space:normal;max-width:calc(100% - 32px);text-align:center}
-  .order-cta{
-    position:sticky;bottom:0;z-index:5;background:var(--white);
-    margin:0 -20px;padding:12px 20px 8px;border-top:1px solid var(--border);
+  /* Compact hero: the map hint carries the instructions on phones. */
+  .store-hero{padding:14px 16px}
+  .store-hero-inner-wrap{padding:0}
+  .store-hero p,.store-progress{display:none}
+  .store-title{font-size:26px}
+  .config-left,.config-right{padding:20px 16px}
+
+  /* Toolbar spans the map width; zoom buttons move to the bottom (see initMap). */
+  .map-toolbar{top:10px;left:10px;right:10px;gap:6px}
+  .map-search{flex-wrap:nowrap;min-width:0;padding:4px 4px 4px 6px}
+  /* 16px stops iOS Safari zooming the page when the field is focused. */
+  .map-search input{flex:1;min-width:0;width:auto;font-size:16px;height:36px;padding:0 8px}
+  .map-search button{height:36px;padding:0 16px;font-size:13px;flex-shrink:0}
+  .map-search-results{top:52px}
+  .map-search-result{padding:13px 14px;font-size:13px}
+  .map-hint{white-space:normal;max-width:calc(100% - 128px);text-align:center}
+  .leaflet-touch .leaflet-bar a{width:40px;height:40px;line-height:40px}
+
+  /* Readable sizes for the small print in the size cards and order summary. */
+  .config-section-title{font-size:12px}
+  .frame-colours-header{font-size:11px}
+  .frame-colour-boxes{gap:10px}
+  .frame-colour-swatch{width:42px;height:42px}
+  .frame-colour-name{font-size:12px;max-width:52px}
+  .frame-colour-price{font-size:11px}
+  .order-label-optional{font-size:11px}
+  .order-label-input{font-size:16px;width:55%;padding:8px 0}
+  .receive-item span{font-size:11px}
+  .trust-item{font-size:12px}
+
+  /* Price + Add to cart pinned to the bottom of the screen. */
+  .order-buy{
+    position:fixed;left:0;right:0;bottom:0;z-index:600;
+    display:flex;align-items:center;gap:14px;
+    background:var(--white);border-top:1px solid var(--border);
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));
     box-shadow:0 -10px 30px rgba(26,23,20,0.08);
   }
+  .order-buy-summary{display:flex;flex-direction:column;min-width:0;flex-shrink:0;max-width:40%}
+  .order-buy-price{font-family:var(--serif);font-size:22px;line-height:1.1;color:var(--ink)}
+  .order-buy-scale{font-size:11px;color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .order-buy .btn-order{flex:1;min-height:48px;font-size:14px}
+  body:has(.order-buy){padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+  /* Out of the way while the keyboard is up. */
+  .input-focused .order-buy{display:none}
 }
 
 /* Reserve layout space for product prices until loaded */
@@ -639,7 +677,7 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 .frame-zoom-label{font:500 12px/1 var(--sans);letter-spacing:0.01em;color:var(--mid);cursor:pointer}
 .frame-zoom-val{
   font-family:var(--serif);font-size:14px;line-height:1;color:var(--ink);
-  min-width:36px;text-align:right;font-variant-numeric:tabular-nums;
+  min-width:36px;text-align:right;font-variant-numeric:tabular-nums;flex-shrink:0;
 }
 
 /* Custom range: hairline track filled up to the thumb (--fill set by app.js). */
@@ -706,12 +744,20 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 @media(max-width:640px){
   .map-toolbar-end{flex-basis:100%}
   .frame-controls{width:100%}
-  .frame-zoom{flex:1;min-width:0}
-  .frame-range{flex:1;min-width:60px;width:auto}
+  .frame-btn,.landscape-switch{height:40px}
+  .frame-zoom{flex:1;min-width:0;height:40px}
+  /* The slider gives up width first, so the value never overlaps Landscape. */
+  .frame-range{flex:1;min-width:0;width:auto;height:32px}
+  .frame-range::-webkit-slider-thumb{width:22px;height:22px;margin-top:-9px}
+  .frame-range::-moz-range-thumb{width:20px;height:20px}
 }
 @media(max-width:400px){
   .frame-btn span,.frame-zoom-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-  .frame-btn{padding:0 10px}
+  .frame-btn{padding:0 12px}
+}
+@media(max-width:360px){
+  .landscape-switch>span:not(.landscape-switch-track){position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .landscape-switch{padding:0 6px 0 10px}
 }
 
 /* Landscape palette - used only by the frame controls and the map banner. While
@@ -777,13 +823,6 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 @keyframes nudge-pulse{0%,100%{border-bottom-color:var(--border)}50%{border-bottom-color:var(--accent)}}
 .order-label-input.geocode-nudge{animation:nudge-pulse 0.5s ease 3}
 
-/* Safe-area inset for notched devices on the mobile sticky CTA */
-@supports(padding-bottom:env(safe-area-inset-bottom)){
-  @media(max-width:640px){
-    .order-cta{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
-  }
-}
-
 @media (prefers-reduced-motion: reduce){
   html{scroll-behavior:auto}
   .reveal{opacity:1;transform:none;transition:none}
@@ -837,9 +876,13 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 }
 .cookie-consent-reject:hover{border-color:var(--ink);color:var(--ink);}
 @media (max-width:480px){
-  .cookie-consent-overlay{padding:12px}
-  .cookie-consent-card{padding:22px 20px 20px;border-radius:12px}
-  .cookie-consent-btn{flex:1 1 100%}
+  /* Compact bottom card on phones so the page behind stays recognisable. */
+  .cookie-consent-overlay{padding:10px;background:rgba(26,23,20,0.35);backdrop-filter:none}
+  .cookie-consent-card{padding:18px 18px 16px;border-radius:12px}
+  .cookie-consent-title{font-size:18px;margin-bottom:6px}
+  .cookie-consent-text{font-size:13px;line-height:1.55;margin-bottom:14px}
+  .cookie-consent-actions{gap:8px;flex-wrap:nowrap}
+  .cookie-consent-btn{flex:1 1 0;min-width:0;padding:12px 10px;font-size:13px}
 }
 @media (prefers-reduced-motion: reduce){
   .cookie-consent-overlay,.cookie-consent-card{animation:none}

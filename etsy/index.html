@@ -19,7 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <link rel="stylesheet" href="../assets/css/styles.css?v=52f630ac"/>
+  <link rel="stylesheet" href="../assets/css/styles.css?v=abad4c0b"/>
   <style>
     /* Etsy tool: two-column layout, no pricing, no right bar. */
     #etsyPage{padding-top:60px;min-height:100vh;}
@@ -35,6 +35,24 @@
     .btn-copy.is-copyfail{background:#b23b3b;}
     .etsy-copy-hint{margin:12px 2px 0;font-size:.82rem;line-height:1.4;color:var(--muted,#7a7268);}
     @media (max-width:900px){.etsy-page .configurator{grid-template-columns:1fr;}}
+    @media (max-width:640px){
+      #etsyPage{min-height:0;}
+      /* Sizes as a wrapping grid of small tiles instead of a tall list. */
+      .etsy-page .size-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;}
+      .etsy-page .size-opt{padding:12px;}
+      .etsy-page .size-opt-sub{display:none;}
+      /* Copy pinned to the bottom so it is in reach while adjusting the map. */
+      .etsy-copy-wrap{
+        position:fixed;left:0;right:0;bottom:0;z-index:600;margin:0;
+        background:var(--white);border-top:1px solid var(--border);
+        padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));
+        box-shadow:0 -10px 30px rgba(26,23,20,0.08);
+      }
+      .btn-copy{padding:14px 20px;font-size:1.15rem;}
+      .etsy-copy-hint{display:none;}
+      body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px));}
+      .input-focused .etsy-copy-wrap{display:none;}
+    }
   </style>
 </head>
 <body>
@@ -176,7 +194,7 @@
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script defer src="../assets/js/env.js?v=4bef495c"></script>
-<script defer src="../assets/js/app.js?v=2c4abce0"></script>
+<script defer src="../assets/js/app.js?v=3bb36a83"></script>
 <script defer src="../assets/js/analytics.js?v=ad0d4f07"></script>
 </body>
 </html>

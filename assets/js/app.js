@@ -539,7 +539,7 @@ function selectProduct(product) {
 
   // Place (or morph) the frame immediately at the center of the current viewport.
   if (map && handleIcon) {
-    const center = prevCenter || map.getCenter();
+    const center = prevCenter || clearMapCentre();
     const nextBBox = computeBBoxForProduct(center, product, frameZoom);
     if (nextBBox) {
       if (prevBBox && bboxLayer && handle) {
@@ -548,9 +548,7 @@ function selectProduct(product) {
         createBBox(center, handleIcon);
       }
       document.getElementById('sel-run').disabled = false;
-      if (!window.matchMedia('(pointer: coarse)').matches) {
-        document.getElementById('map-hint').textContent = 'Drag the corner handle to reposition';
-      }
+      document.getElementById('map-hint').textContent = framePlacedHint();
       document.getElementById('order-status-msg').textContent = 'Adjust the frame, then add to cart.';
     } else {
       document.getElementById('order-status-msg').textContent = 'Unable to place the frame for this size.';
@@ -706,10 +704,12 @@ function setupMapSearch() {
     const lon = Number(item?.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
     map.setView([lat, lon], Math.max(map.getZoom(), 14), { animate: false });
+    // Nudge the place down into the area the toolbar doesn't cover.
+    map.panBy([0, -mapToolbarOffset() / 2], { animate: false });
 
-    // After search, always center the frame on the new viewport center (if a product is selected).
+    // After search, always center the frame on the searched place (if a product is selected).
     if (selectedProduct && map && handleIcon) {
-      const center = map.getCenter();
+      const center = L.latLng(lat, lon);
       const next = computeBBoxForProduct(center, selectedProduct, frameZoom);
       if (next) {
         if (bbox && bboxLayer && handle) {
@@ -718,13 +718,13 @@ function setupMapSearch() {
           createBBox(center, handleIcon);
         }
         document.getElementById('sel-run').disabled = false;
-        if (!window.matchMedia('(pointer: coarse)').matches) {
-          document.getElementById('map-hint').textContent = 'Drag the corner handle to reposition';
-        }
+        document.getElementById('map-hint').textContent = framePlacedHint();
         document.getElementById('order-status-msg').textContent = 'Looking good! Adjust the frame then add to cart.';
       }
     }
     clearResults();
+    // Drop the on-screen keyboard so the map is visible again.
+    input.blur();
   };
 
   const setActiveIndex = (nextIndex, { focus = false } = {}) => {
@@ -900,6 +900,31 @@ function frameMinMapZoom() {
   return landscapeMode ? MAP_MIN_ZOOM_LANDSCAPE : MAP_MIN_ZOOM_STANDARD;
 }
 
+// Touch screens get their own wording - there is no cursor to find the handle with.
+function framePlacedHint() {
+  return window.matchMedia('(pointer: coarse)').matches
+    ? 'Drag the round handle to move your frame'
+    : 'Drag the corner handle to reposition';
+}
+
+// Height of the map covered by the floating search/controls toolbar, capped at
+// half the map so a tall toolbar can never push the frame off the bottom.
+// Phones only: on wider screens the toolbar sits clear of the map centre.
+function mapToolbarOffset() {
+  const toolbar = document.querySelector('.map-toolbar');
+  const mapEl = document.getElementById('store-map');
+  if (!map || !toolbar || !mapEl || !window.matchMedia('(max-width:640px)').matches) return 0;
+  const covered = toolbar.getBoundingClientRect().bottom - mapEl.getBoundingClientRect().top;
+  return Math.max(0, Math.min(covered, map.getSize().y / 2));
+}
+
+// Centre of the part of the map the toolbar leaves clear, so a newly placed
+// frame and its corner handle land in view rather than underneath the toolbar.
+function clearMapCentre() {
+  const size = map.getSize();
+  return map.containerPointToLatLng([size.x / 2, (size.y + mapToolbarOffset()) / 2]);
+}
+
 function zoomLabel(zoom) {
   if (!landscapeMode) return `${zoom.toFixed(1)}×`;
   const { min, max, displayMax } = ZOOM_LANDSCAPE;
@@ -972,7 +997,11 @@ function initMap() {
     maxBounds: worldBounds,
     maxBoundsViscosity: 1.0,
   }).setView(start ? start.centre : [51.505, -0.09], start ? start.zoom : 14);
-  L.control.zoom({ position: 'topleft' }).addTo(map);
+  // On phones the toolbar spans the full width, so the zoom buttons move to the bottom.
+  const isNarrow = window.matchMedia('(max-width:640px)').matches;
+  L.control.zoom({ position: isNarrow ? 'bottomright' : 'topleft' }).addTo(map);
+  // A linked start point should land where the frame goes, clear of the toolbar.
+  if (start) map.panBy([0, -mapToolbarOffset() / 2], { animate: false });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '\u00A9 OpenStreetMap',
@@ -981,9 +1010,10 @@ function initMap() {
 
   const hIcon = L.divIcon({
     className: '',
-    html: `<div style="width:28px;height:28px;border-radius:50%;background:white;border:2.5px solid #c94f2c;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);cursor:grab"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c94f2c" stroke-width="2.5"><path d="M12 2v20M2 12h20"/></svg></div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+    // 44px transparent hit area around the 28px visible handle, for fingers.
+    html: `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:grab"><div style="width:28px;height:28px;flex-shrink:0;border-radius:50%;background:white;border:2.5px solid #c94f2c;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c94f2c" stroke-width="2.5"><path d="M12 2v20M2 12h20"/></svg></div></div>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
   });
   handleIcon = hIcon;
   setupMapSearch();
@@ -1957,23 +1987,29 @@ function initNavUI() {
   }, { passive: true });
 }
 
-// On mobile, temporarily un-stick the order CTA while an input is focused
-// so the virtual keyboard doesn't obscure the Add to cart button.
+// On mobile, hide the fixed bottom bar (Add to cart / Copy) while a text input
+// is focused so it doesn't ride up on top of the virtual keyboard.
 function initMobileInputFix() {
-  const orderCta = document.querySelector('.order-cta');
-  if (!orderCta) return;
-  const inputs = document.querySelectorAll('.config-right input, .config-right textarea');
+  const inputs = document.querySelectorAll(
+    '.configurator input[type="text"], .configurator input[type="search"], .configurator input[type="number"], .configurator textarea'
+  );
   inputs.forEach((input) => {
-    input.addEventListener('focus', () => {
-      orderCta.style.position = 'relative';
-      orderCta.style.bottom = 'auto';
-      orderCta.style.boxShadow = 'none';
-    });
-    input.addEventListener('blur', () => {
-      orderCta.style.position = '';
-      orderCta.style.bottom = '';
-      orderCta.style.boxShadow = '';
-    });
+    input.addEventListener('focus', () => document.body.classList.add('input-focused'));
+    input.addEventListener('blur', () => document.body.classList.remove('input-focused'));
+  });
+
+  // Mirror the order summary into the compact bar shown at the bottom on mobile.
+  const pairs = [
+    ['order-price', 'order-buy-price'],
+    ['order-scale', 'order-buy-scale'],
+  ];
+  pairs.forEach(([fromId, toId]) => {
+    const from = document.getElementById(fromId);
+    const to = document.getElementById(toId);
+    if (!from || !to) return;
+    const sync = () => { to.textContent = from.textContent; };
+    sync();
+    new MutationObserver(sync).observe(from, { childList: true, characterData: true, subtree: true });
   });
 }
 

@@ -50,7 +50,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <link rel="stylesheet" href="../assets/css/styles.css?v=52f630ac"/>
+  <link rel="stylesheet" href="../assets/css/styles.css?v=abad4c0b"/>
 </head>
 <body>
 
@@ -198,7 +198,13 @@
         </div>
         <div class="order-cta">
           <p class="order-proof-note">You&rsquo;ll approve a proof before we make anything.</p>
-          <button class="btn-order" id="sel-run" disabled>Add to cart &rarr;</button>
+          <div class="order-buy">
+            <div class="order-buy-summary" aria-hidden="true">
+              <span class="order-buy-price" id="order-buy-price">&mdash;</span>
+              <span class="order-buy-scale" id="order-buy-scale"></span>
+            </div>
+            <button class="btn-order" id="sel-run" disabled>Add to cart &rarr;</button>
+          </div>
           <button class="btn-order-sec" id="sel-clear">Clear selection</button>
           <div class="trust-row">
             <span class="trust-item">Secure checkout</span>
@@ -242,7 +248,7 @@
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script defer src="../assets/js/env.js?v=4bef495c"></script>
-<script defer src="../assets/js/app.js?v=2c4abce0"></script>
+<script defer src="../assets/js/app.js?v=3bb36a83"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script defer src="../assets/js/turnstile.js?v=0d6c1fe7"></script>
 <script defer src="../assets/js/analytics.js?v=ad0d4f07"></script>
