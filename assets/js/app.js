@@ -2546,9 +2546,17 @@ async function copyBoundingBox() {
   const btn = document.getElementById('etsy-copy');
   if (!bbox) return;
   // Standard bbox order: west,south,east,north (minLon,minLat,maxLon,maxLat).
-  const text = [bbox.west, bbox.south, bbox.east, bbox.north]
+  // The bbox stays first so it can still be split off with ' | '; the rest
+  // carries the choices the bbox alone can't express (size, buildings, rotation).
+  const bboxText = [bbox.west, bbox.south, bbox.east, bbox.north]
     .map((n) => Number(n).toFixed(6))
     .join(',');
+  const parts = [bboxText];
+  if (selectedProduct?.displaySize) parts.push(selectedProduct.displaySize);
+  parts.push(landscapeMode ? 'Terrain only (no buildings)' : 'With buildings');
+  const rotation = ((Number(frameRotation) || 0) % 360 + 360) % 360;
+  if (rotation) parts.push(`Rotated ${rotation}°`);
+  const text = parts.join(' | ');
 
   const flash = (label, ok) => {
     if (!btn) return;

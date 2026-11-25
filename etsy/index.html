@@ -35,6 +35,17 @@
     .btn-copy.is-copyfail{background:#b23b3b;}
     .etsy-copy-hint{margin:12px 2px 0;font-size:.82rem;line-height:1.4;color:var(--muted,#7a7268);}
     @media (max-width:900px){.etsy-page .configurator{grid-template-columns:1fr;}}
+    /* Mobile: the left column stacks above the map, which put Copy before the
+       frame was placed. Flatten it so Copy can sit below the map. */
+    @media (max-width:900px){
+      .etsy-page .configurator{display:flex;flex-direction:column;}
+      .etsy-page .config-left{display:contents;}
+      .etsy-page .config-left > *{margin-left:20px;margin-right:20px;}
+      .etsy-page .config-left > .config-section-title{margin-top:24px;}
+      .etsy-page .config-left > .size-options{margin-bottom:24px;}
+      .etsy-page .config-map{order:1;}
+      .etsy-page .etsy-copy-wrap{order:2;margin-top:0;padding:20px 0 32px;}
+    }
   </style>
 </head>
 <body>
@@ -90,7 +101,7 @@
 
         <div class="etsy-copy-wrap">
           <button type="button" class="btn-copy" id="etsy-copy">Copy</button>
-          <p class="etsy-copy-hint">Copies <code>west,south,east,north</code> of the current frame to your clipboard.</p>
+          <p class="etsy-copy-hint">Copies the area (<code>west,south,east,north</code>), size, whether buildings are included, and any rotation.</p>
         </div>
       </div>
 
@@ -176,7 +187,7 @@
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script defer src="../assets/js/env.js?v=053c49e3"></script>
-<script defer src="../assets/js/app.js?v=8a92b2c8"></script>
+<script defer src="../assets/js/app.js?v=0f705d22"></script>
 <script defer src="../assets/js/analytics.js?v=f88c509f"></script>
 </body>
 </html>
