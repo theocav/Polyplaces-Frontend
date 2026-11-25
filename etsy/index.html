@@ -35,6 +35,17 @@
     .btn-copy.is-copyfail{background:#b23b3b;}
     .etsy-copy-hint{margin:12px 2px 0;font-size:.82rem;line-height:1.4;color:var(--muted,#7a7268);}
     @media (max-width:900px){.etsy-page .configurator{grid-template-columns:1fr;}}
+    /* Mobile: the left column stacks above the map, which put Copy before the
+       frame was placed. Flatten it so Copy can sit below the map. */
+    @media (max-width:900px){
+      .etsy-page .configurator{display:flex;flex-direction:column;}
+      .etsy-page .config-left{display:contents;}
+      .etsy-page .config-left > *{margin-left:20px;margin-right:20px;}
+      .etsy-page .config-left > .config-section-title{margin-top:24px;}
+      .etsy-page .config-left > .size-options{margin-bottom:24px;}
+      .etsy-page .config-map{order:1;}
+      .etsy-page .etsy-copy-wrap{order:2;margin-top:0;padding:20px 0 32px;}
+    }
   </style>
 </head>
 <body>
