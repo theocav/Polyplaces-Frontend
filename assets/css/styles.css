@@ -438,8 +438,9 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 /* CART */
 .cart-drawer{
   position:fixed;top:0;right:0;width:360px;background:var(--white);
-  border-left:1px solid var(--border);box-shadow:-20px 0 50px var(--shadow);
-  transform:translateX(100%);transition:transform 0.25s ease;z-index:900;
+  border-left:1px solid var(--border);box-shadow:none;
+  /* Above the fixed nav (1100) so the header and Close button stay visible. */
+  transform:translateX(100%);transition:transform 0.25s ease,box-shadow 0.25s ease;z-index:1200;
   display:flex;flex-direction:column;
   /* 100vh is wrong inside in-app browsers (Instagram, Facebook, TikTok): it
      reports full-screen height, so the footer hides behind their bottom bar.
@@ -450,11 +451,14 @@ footer{background:var(--ink);padding:56px 40px 32px;display:grid;grid-template-c
 @supports (height:100dvh){
   .cart-drawer{height:100dvh}
 }
-.cart-open .cart-drawer{transform:translateX(0)}
+/* Shadow only while open — closed, it bled onto the right edge of every page. */
+.cart-open .cart-drawer{transform:translateX(0);box-shadow:-20px 0 50px var(--shadow)}
 .cart-overlay{
   position:fixed;inset:0;background:rgba(26,23,20,0.35);opacity:0;pointer-events:none;
-  transition:opacity 0.25s ease;z-index:800;
+  transition:opacity 0.25s ease;z-index:1150;
 }
+/* Checkout errors are shown while the cart is open; keep them above it. */
+.cart-open .checkout-banner{z-index:1250}
 .cart-open .cart-overlay{opacity:1;pointer-events:auto}
 .cart-header{padding:20px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .cart-header h3{font-family:var(--serif);font-size:22px;font-weight:300;color:var(--ink)}
